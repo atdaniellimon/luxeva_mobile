@@ -4,6 +4,7 @@ import '../config/theme.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../widgets/dynamic_notice.dart';
 import '../widgets/glass_panel.dart';
 
 class TransferScreen extends StatefulWidget {
@@ -87,6 +88,13 @@ class _TransferScreenState extends State<TransferScreen> {
       HapticFeedback.heavyImpact();
 
       if (mounted) {
+        DynamicNotice.show(
+          context,
+          message: 'Transferencia enviada',
+          subtitle: '-\$${amount.toStringAsFixed(2)} MXN a $to',
+          icon: CupertinoIcons.arrow_up_right,
+        );
+
         showCupertinoDialog(
           context: context,
           builder: (ctx) => CupertinoAlertDialog(

@@ -6,6 +6,7 @@ import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/copy_chip.dart';
+import '../widgets/dynamic_notice.dart';
 import '../widgets/glass_panel.dart';
 
 class SpeiDepositScreen extends StatefulWidget {
@@ -47,11 +48,6 @@ class _SpeiDepositScreenState extends State<SpeiDepositScreen> {
     } catch (_) {
       if (mounted) setState(() => _isLoadingInstructions = false);
     }
-  }
-
-  void _setQuickAmount(double amt) {
-    HapticFeedback.selectionClick();
-    _amountController.text = amt.toStringAsFixed(0);
   }
 
   Future<void> _handleConfirmDeposit() async {
@@ -299,20 +295,6 @@ class _SpeiDepositScreenState extends State<SpeiDepositScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
-
-                        // Quick Pills
-                        Row(
-                          children: [
-                            _buildPill(100),
-                            const SizedBox(width: 8),
-                            _buildPill(250),
-                            const SizedBox(width: 8),
-                            _buildPill(500),
-                            const SizedBox(width: 8),
-                            _buildPill(1000),
-                          ],
-                        ),
                         const SizedBox(height: 20),
 
                         // Confirm Button
@@ -385,32 +367,6 @@ class _SpeiDepositScreenState extends State<SpeiDepositScreen> {
         ),
         CopyChip(textToCopy: copyValue),
       ],
-    );
-  }
-
-  Widget _buildPill(double amount) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => _setQuickAmount(amount),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: LuxevaTheme.cardElevated,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: LuxevaTheme.borderGold.withOpacity(0.2), width: 0.5),
-          ),
-          child: Center(
-            child: Text(
-              '+\$${amount.toInt()}',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: LuxevaTheme.goldLight,
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

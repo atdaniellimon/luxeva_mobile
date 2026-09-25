@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/luxury_card.dart';
 import 'account_screen.dart';
+import 'digital_card_screen.dart';
 import 'spei_deposit_screen.dart';
 import 'transactions_screen.dart';
 import 'transfer_screen.dart';
@@ -140,7 +141,15 @@ class _HomeVaultScreenState extends State<HomeVaultScreen> {
                 const SizedBox(height: 20),
 
                 // Physical Metal Card Widget
-                LuxuryCardWidget(user: currentUser),
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.of(context).push(
+                      CupertinoPageRoute(builder: (_) => DigitalCardScreen(user: currentUser)),
+                    );
+                  },
+                  child: LuxuryCardWidget(user: currentUser),
+                ),
                 const SizedBox(height: 24),
 
                 // Quick Actions Bar
@@ -170,6 +179,9 @@ class _HomeVaultScreenState extends State<HomeVaultScreen> {
                       label: 'Tarjeta',
                       onTap: () {
                         HapticFeedback.lightImpact();
+                        Navigator.of(context).push(
+                          CupertinoPageRoute(builder: (_) => DigitalCardScreen(user: currentUser)),
+                        );
                       },
                     ),
                     _buildActionButton(

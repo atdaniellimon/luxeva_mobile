@@ -5,6 +5,7 @@ import 'models/user.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_tab_scaffold.dart';
 import 'services/auth_service.dart';
+import 'widgets/biometric_lock_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,7 +47,10 @@ class LuxevaApp extends StatelessWidget {
           if (session == null) {
             return const LoginScreen();
           }
-          return MainTabScaffold(user: session);
+          return BiometricLockGate(
+            user: session,
+            child: MainTabScaffold(user: session),
+          );
         },
       ),
     );

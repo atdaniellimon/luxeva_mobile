@@ -3,8 +3,11 @@ import 'package:flutter/services.dart';
 import '../config/theme.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/biometric_service.dart';
 import '../widgets/copy_chip.dart';
+import '../widgets/dynamic_notice.dart';
 import '../widgets/glass_panel.dart';
+import 'digital_card_screen.dart';
 
 class AccountScreen extends StatefulWidget {
   final UserSession user;
@@ -16,16 +19,70 @@ class AccountScreen extends StatefulWidget {
 }
 
 class _AccountScreenState extends State<AccountScreen> {
-  bool _biometricsEnabled = true;
+  bool _biometricsEnabled = false;
+  bool _isLoadingBiometrics = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometrics();
+  }
+
+  Future<void> _loadBiometrics() async {
+    final enabled = await BiometricService.instance.isEnabled();
+    if (mounted) {
+      setState(() {
+        _biometricsEnabled = enabled;
+        _isLoadingBiometrics = false;
+      });
+    }
+  }
+
+  Future<void> _handleToggleBiometrics(bool val) async {
+    HapticFeedback.selectionClick();
+    if (val) {
+      // Prompt biometric authentication to verify identity before enabling
+      final authenticated = await BiometricService.instance.authenticate(
+        reason: 'Verifique su identidad para habilitar Face ID',
+      );
+
+      if (authenticated) {
+        await BiometricService.instance.setEnabled(true);
+        if (mounted) {
+          setState(() => _biometricsEnabled = true);
+          DynamicNotice.show(
+            context,
+            message: 'Face ID activado',
+            subtitle: 'Tu sesión está protegida con biometría',
+            icon: CupertinoIcons.viewfinder,
+          );
+        }
+      } else {
+        if (mounted) {
+          setState(() => _biometricsEnabled = false);
+        }
+      }
+    } else {
+      await BiometricService.instance.setEnabled(false);
+      if (mounted) {
+        setState(() => _biometricsEnabled = false);
+        DynamicNotice.show(
+          context,
+          message: 'Face ID desactivado',
+          icon: CupertinoIcons.lock_open,
+        );
+      }
+    }
+  }
 
   void _handleLogout() {
     showCupertinoDialog(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
-        title: const Text('Finalizar Sesión', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text('Cerrar Sesión', style: TextStyle(fontWeight: FontWeight.w700)),
         content: const Padding(
           padding: EdgeInsets.only(top: 8.0),
-          child: Text('¿Desea cerrar la sesión de su bóveda privada en este dispositivo?'),
+          child: Text('¿Deseas cerrar tu sesión en este dispositivo?'),
         ),
         actions: [
           CupertinoDialogAction(
@@ -52,7 +109,7 @@ class _AccountScreenState extends State<AccountScreen> {
       backgroundColor: LuxevaTheme.obsidianBg,
       navigationBar: const CupertinoNavigationBar(
         backgroundColor: LuxevaTheme.glassBg,
-        middle: Text('OFICIALÍA DE CUENTA', style: TextStyle(letterSpacing: 1.5, fontSize: 13)),
+        middle: Text('PERFIL', style: TextStyle(letterSpacing: 1.5, fontSize: 13, fontWeight: FontWeight.w700)),
       ),
       child: SafeArea(
         child: ListView(
@@ -72,9 +129,9 @@ class _AccountScreenState extends State<AccountScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: LuxevaTheme.goldAccent.withOpacity(0.3),
-                          blurRadius: 24,
-                          spreadRadius: 2,
+                          color: LuxevaTheme.goldAccent.withOpacity(0.25),
+                          blurRadius: 20,
+                          spreadRadius: 1,
                         ),
                       ],
                     ),
@@ -102,31 +159,23 @@ class _AccountScreenState extends State<AccountScreen> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0x18CBBD93),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: LuxevaTheme.borderGold),
-                    ),
-                    child: const Text(
-                      'SOCIO PRIVADO INSTITUCIONAL',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.2,
-                        color: LuxevaTheme.goldAccent,
-                      ),
+                  Text(
+                    'SOCIO LUXEVA',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5,
+                      color: LuxevaTheme.goldAccent.withOpacity(0.9),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 28),
 
-            // Credentials Panel
+            // Account Details Panel
             const Text(
-              'PARÁMETROS DEL TITULAR',
+              'DATOS DE LA CUENTA',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
@@ -152,7 +201,7 @@ class _AccountScreenState extends State<AccountScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Cuenta Institucional',
+                            'Número de Cuenta',
                             style: TextStyle(fontSize: 11, color: LuxevaTheme.textSecondary),
                           ),
                           const SizedBox(height: 2),
@@ -173,11 +222,66 @@ class _AccountScreenState extends State<AccountScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+
+            // Card Shortcut
+            const Text(
+              'SERVICIOS Y CREDENCIALES',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: LuxevaTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.of(context).push(
+                  CupertinoPageRoute(builder: (_) => DigitalCardScreen(user: widget.user)),
+                );
+              },
+              child: GlassPanel(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: LuxevaTheme.goldAccent.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(CupertinoIcons.creditcard_fill, size: 18, color: LuxevaTheme.goldAccent),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Tarjeta Luxeva Digital',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LuxevaTheme.textPrimary),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Acceso a ATMs Luxeva y comercios afiliados',
+                            style: TextStyle(fontSize: 11, color: LuxevaTheme.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(CupertinoIcons.chevron_forward, size: 16, color: LuxevaTheme.textMuted),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
 
             // Security & Biometrics
             const Text(
-              'PROTOCOLOS DE SEGURIDAD',
+              'SEGURIDAD',
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
@@ -203,14 +307,14 @@ class _AccountScreenState extends State<AccountScreen> {
                           ),
                         ],
                       ),
-                      CupertinoSwitch(
-                        value: _biometricsEnabled,
-                        activeColor: LuxevaTheme.goldAccent,
-                        onChanged: (val) {
-                          HapticFeedback.selectionClick();
-                          setState(() => _biometricsEnabled = val);
-                        },
-                      ),
+                      if (_isLoadingBiometrics)
+                        const CupertinoActivityIndicator()
+                      else
+                        CupertinoSwitch(
+                          value: _biometricsEnabled,
+                          activeColor: LuxevaTheme.goldAccent,
+                          onChanged: _handleToggleBiometrics,
+                        ),
                     ],
                   ),
                   Container(
@@ -250,18 +354,18 @@ class _AccountScreenState extends State<AccountScreen> {
             // Logout Button
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 48,
               child: CupertinoButton(
                 color: const Color(0x18FF453A),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
+                padding: EdgeInsets.zero,
                 onPressed: _handleLogout,
                 child: const Text(
-                  'Finalizar Sesión Privada',
+                  'Cerrar Sesión',
                   style: TextStyle(
                     color: LuxevaTheme.redNegative,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
                   ),
                 ),
               ),
