@@ -115,9 +115,9 @@ class _HomeVaultScreenState extends State<HomeVaultScreen> {
                   child: Column(
                     children: [
                       const Text(
-                        'PATRIMONIO LÍQUIDO DISPONIBLE',
+                        'SALDO DISPONIBLE',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 2.0,
                           color: LuxevaTheme.textSecondary,
@@ -128,7 +128,7 @@ class _HomeVaultScreenState extends State<HomeVaultScreen> {
                         currentUser.formattedBalance,
                         style: const TextStyle(
                           fontFamily: 'Georgia',
-                          fontSize: 32,
+                          fontSize: 34,
                           fontWeight: FontWeight.w700,
                           letterSpacing: -0.5,
                           color: LuxevaTheme.textPrimary,
@@ -158,7 +158,7 @@ class _HomeVaultScreenState extends State<HomeVaultScreen> {
                     ),
                     _buildActionButton(
                       icon: CupertinoIcons.plus,
-                      label: 'Fondear',
+                      label: 'Depositar',
                       onTap: () {
                         Navigator.of(context).push(
                           CupertinoPageRoute(builder: (_) => SpeiDepositScreen(user: currentUser)),
@@ -167,14 +167,14 @@ class _HomeVaultScreenState extends State<HomeVaultScreen> {
                     ),
                     _buildActionButton(
                       icon: CupertinoIcons.creditcard,
-                      label: 'Instrumentos',
+                      label: 'Tarjeta',
                       onTap: () {
                         HapticFeedback.lightImpact();
                       },
                     ),
                     _buildActionButton(
                       icon: CupertinoIcons.list_bullet,
-                      label: 'Bitácora',
+                      label: 'Historial',
                       onTap: () {
                         Navigator.of(context).push(
                           CupertinoPageRoute(builder: (_) => TransactionsScreen(user: currentUser)),
@@ -190,7 +190,7 @@ class _HomeVaultScreenState extends State<HomeVaultScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'BITÁCORA DE OPERACIONES',
+                      'ÚLTIMOS MOVIMIENTOS',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,

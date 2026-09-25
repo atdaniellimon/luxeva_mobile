@@ -105,7 +105,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       backgroundColor: LuxevaTheme.obsidianBg,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: LuxevaTheme.glassBg,
-        middle: const Text('BITÁCORA DE OPERACIONES', style: TextStyle(letterSpacing: 1.5, fontSize: 13)),
+        middle: const Text('Movimientos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
           child: const Icon(CupertinoIcons.chevron_left, color: LuxevaTheme.textPrimary),
@@ -129,11 +129,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   ),
                   'income': Padding(
                     padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    child: Text('Acreditaciones', style: TextStyle(fontSize: 12, color: LuxevaTheme.textPrimary)),
+                    child: Text('Depósitos', style: TextStyle(fontSize: 12, color: LuxevaTheme.textPrimary)),
                   ),
                   'expense': Padding(
                     padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    child: Text('Dispersiones', style: TextStyle(fontSize: 12, color: LuxevaTheme.textPrimary)),
+                    child: Text('Envíos', style: TextStyle(fontSize: 12, color: LuxevaTheme.textPrimary)),
                   ),
                 },
                 onValueChanged: (val) {

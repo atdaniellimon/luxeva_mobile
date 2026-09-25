@@ -58,17 +58,17 @@ class _TransferScreenState extends State<TransferScreen> {
     final amount = double.tryParse(amountText);
 
     if (to.isEmpty) {
-      _showAlert('Datos Incompletos', 'Ingrese la CLABE interbancaria o titular de destino.');
+      _showAlert('Datos incompletos', 'Ingresa la CLABE o número de cuenta de destino.');
       return;
     }
 
     if (amount == null || amount <= 0) {
-      _showAlert('Importe Inválido', 'Ingrese un importe válido para la transferencia.');
+      _showAlert('Monto inválido', 'Ingresa una cantidad válida para transferir.');
       return;
     }
 
     if (amount > widget.user.balance) {
-      _showAlert('Fondos Insuficientes', 'El importe excede su patrimonio líquido disponible.');
+      _showAlert('Saldo insuficiente', 'El monto supera tu saldo disponible en cuenta.');
       return;
     }
 
@@ -80,21 +80,35 @@ class _TransferScreenState extends State<TransferScreen> {
         accountNumber: widget.user.accountNumber,
         to: to,
         amount: amount,
-        concept: concept.isNotEmpty ? concept : 'Transferencia SPEI',
+        concept: concept.isNotEmpty ? concept : 'Transferencia',
       );
 
       await AuthService.instance.refreshBalance();
       HapticFeedback.heavyImpact();
 
       if (mounted) {
-        _showAlert(
-          'Instrucción SPEI Ejecutada',
-          'Se ha liquidado la transferencia de \$${amount.toStringAsFixed(2)} MXN a $to con éxito.',
-          popOnSuccess: true,
+        showCupertinoDialog(
+          context: context,
+          builder: (ctx) => CupertinoAlertDialog(
+            title: const Text('Transferencia Enviada', style: TextStyle(fontWeight: FontWeight.w700)),
+            content: Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text('Se enviaron \$${amount.toStringAsFixed(2)} MXN a $to.'),
+            ),
+            actions: [
+              CupertinoDialogAction(
+                child: const Text('Listo', style: TextStyle(color: LuxevaTheme.goldAccent, fontWeight: FontWeight.w600)),
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
         );
       }
     } catch (e) {
-      _showAlert('Error de Liquidación', e.toString().replaceAll('Exception: ', ''));
+      _showAlert('Error al transferir', e.toString().replaceAll('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
@@ -106,7 +120,7 @@ class _TransferScreenState extends State<TransferScreen> {
       backgroundColor: LuxevaTheme.obsidianBg,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: LuxevaTheme.glassBg,
-        middle: const Text('DISPERSIÓN DE CAPITAL', style: TextStyle(letterSpacing: 1.5, fontSize: 13)),
+        middle: const Text('Transferir', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
           child: const Icon(CupertinoIcons.chevron_left, color: LuxevaTheme.textPrimary),
@@ -115,27 +129,22 @@ class _TransferScreenState extends State<TransferScreen> {
       ),
       child: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
-            // Available Balance Reminder
-            Center(
-              child: Column(
+            // Available Balance Card
+            GlassPanel(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'PATRIMONIO DISPONIBLE PARA DISPERSIÓN',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5,
-                      color: LuxevaTheme.textSecondary,
-                    ),
+                    'Saldo disponible',
+                    style: TextStyle(fontSize: 13, color: LuxevaTheme.textSecondary),
                   ),
-                  const SizedBox(height: 6),
                   Text(
                     widget.user.formattedBalance,
                     style: const TextStyle(
-                      fontFamily: 'Georgia',
-                      fontSize: 24,
+                      fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: LuxevaTheme.goldLight,
                     ),
@@ -143,16 +152,16 @@ class _TransferScreenState extends State<TransferScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             GlassPanel(
               hasGoldBorder: true,
-              padding: const EdgeInsets.all(22),
+              padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'BENEFICIARIO O CLABE (18 DÍGITOS)',
+                    'DESTINATARIO (CLABE O CUENTA)',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -161,54 +170,29 @@ class _TransferScreenState extends State<TransferScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  CupertinoTextField(
-                    controller: _toController,
-                    placeholder: '7289... / Nombre del Beneficiario',
-                    placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 14),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                  Container(
                     decoration: BoxDecoration(
-                      color: const Color(0x10FFFFFF),
+                      color: LuxevaTheme.cardElevated,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: LuxevaTheme.borderSubtle),
+                      border: Border.all(color: LuxevaTheme.borderGold.withOpacity(0.35), width: 0.8),
                     ),
-                    style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 15),
-                  ),
-                  const SizedBox(height: 20),
-
-                  const Text(
-                    'IMPORTE A TRANSFERIR (MXN)',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5,
-                      color: LuxevaTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  CupertinoTextField(
-                    controller: _amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    prefix: const Padding(
-                      padding: EdgeInsets.only(left: 14.0),
-                      child: Text(
-                        '\$',
-                        style: TextStyle(fontSize: 18, color: LuxevaTheme.goldAccent, fontWeight: FontWeight.w600),
+                    child: CupertinoTextField(
+                      controller: _toController,
+                      placeholder: 'CLABE interbancaria (18 dígitos)',
+                      placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                      prefix: const Padding(
+                        padding: EdgeInsets.only(left: 14),
+                        child: Icon(CupertinoIcons.creditcard, size: 18, color: LuxevaTheme.goldAccent),
                       ),
+                      decoration: null,
+                      style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 15),
                     ),
-                    placeholder: '0.00',
-                    placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 16),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
-                    decoration: BoxDecoration(
-                      color: const Color(0x10FFFFFF),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: LuxevaTheme.borderSubtle),
-                    ),
-                    style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 17, fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 18),
 
                   const Text(
-                    'CONCEPTO DE OPERACIÓN',
+                    'MONTO A TRANSFERIR (MXN)',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -217,38 +201,88 @@ class _TransferScreenState extends State<TransferScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  CupertinoTextField(
-                    controller: _conceptController,
-                    placeholder: 'Referencia de dispersión',
-                    placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 14),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                  Container(
                     decoration: BoxDecoration(
-                      color: const Color(0x10FFFFFF),
+                      color: LuxevaTheme.cardElevated,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: LuxevaTheme.borderSubtle),
+                      border: Border.all(color: LuxevaTheme.borderGold.withOpacity(0.35), width: 0.8),
                     ),
-                    style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 14),
+                    child: CupertinoTextField(
+                      controller: _amountController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      prefix: const Padding(
+                        padding: EdgeInsets.only(left: 14.0),
+                        child: Text(
+                          '\$',
+                          style: TextStyle(fontSize: 20, color: LuxevaTheme.goldAccent, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      placeholder: '0.00',
+                      placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 18),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                      decoration: null,
+                      style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w700),
+                    ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 18),
 
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: CupertinoButton(
-                      color: LuxevaTheme.goldAccent,
-                      borderRadius: BorderRadius.circular(14),
-                      onPressed: _isSending ? null : _handleSendTransfer,
-                      child: _isSending
-                          ? const CupertinoActivityIndicator(color: LuxevaTheme.obsidianBg)
-                          : const Text(
-                              'Ejecutar Instrucción SPEI',
-                              style: TextStyle(
-                                color: LuxevaTheme.obsidianBg,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.8,
+                  const Text(
+                    'CONCEPTO (OPCIONAL)',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5,
+                      color: LuxevaTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: LuxevaTheme.cardElevated,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: LuxevaTheme.borderGold.withOpacity(0.35), width: 0.8),
+                    ),
+                    child: CupertinoTextField(
+                      controller: _conceptController,
+                      placeholder: 'Ej. Renta, comida, servicio...',
+                      placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 14),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                      prefix: const Padding(
+                        padding: EdgeInsets.only(left: 14),
+                        child: Icon(CupertinoIcons.text_quote, size: 18, color: LuxevaTheme.goldAccent),
+                      ),
+                      decoration: null,
+                      style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 26),
+
+                  GestureDetector(
+                    onTap: _isSending ? null : _handleSendTransfer,
+                    child: Container(
+                      width: double.infinity,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [LuxevaTheme.goldLight, LuxevaTheme.goldAccent, LuxevaTheme.goldDark],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Center(
+                        child: _isSending
+                            ? const CupertinoActivityIndicator(color: LuxevaTheme.obsidianBg)
+                            : const Text(
+                                'Enviar Transferencia',
+                                style: TextStyle(
+                                  color: LuxevaTheme.obsidianBg,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.8,
+                                ),
                               ),
-                            ),
+                      ),
                     ),
                   ),
                 ],
