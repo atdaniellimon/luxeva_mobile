@@ -8,6 +8,7 @@ class GlassPanel extends StatelessWidget {
   final EdgeInsetsGeometry margin;
   final double borderRadius;
   final bool hasGoldBorder;
+  final Color? borderColor;
 
   const GlassPanel({
     super.key,
@@ -16,6 +17,7 @@ class GlassPanel extends StatelessWidget {
     this.margin = EdgeInsets.zero,
     this.borderRadius = 22,
     this.hasGoldBorder = false,
+    this.borderColor,
   });
 
   @override
@@ -32,7 +34,7 @@ class GlassPanel extends StatelessWidget {
               color: LuxevaTheme.glassBg,
               borderRadius: BorderRadius.circular(borderRadius),
               border: Border.all(
-                color: hasGoldBorder ? LuxevaTheme.borderGold : LuxevaTheme.borderSubtle,
+                color: borderColor ?? (hasGoldBorder ? LuxevaTheme.borderGold : LuxevaTheme.borderSubtle),
                 width: 1,
               ),
               boxShadow: const [
