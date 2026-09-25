@@ -140,7 +140,11 @@ class _AccountScreenState extends State<AccountScreen> {
               child: Column(
                 children: [
                   _buildProfileRow('Correo Electrónico', widget.user.email),
-                  const Divider(color: Color(0x10FFFFFF), height: 24),
+                  Container(
+                    height: 0.5,
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    color: const Color(0x18FFFFFF),
+                  ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -209,7 +213,11 @@ class _AccountScreenState extends State<AccountScreen> {
                       ),
                     ],
                   ),
-                  const Divider(color: Color(0x10FFFFFF), height: 24),
+                  Container(
+                    height: 0.5,
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    color: const Color(0x18FFFFFF),
+                  ),
                   const Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
