@@ -11,6 +11,17 @@ class ApiService {
 
   String? _workingBaseUrl;
 
+  dynamic _safeDecode(http.Response response) {
+    try {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } catch (_) {
+      if (response.statusCode >= 500) {
+        throw Exception('Servidor bancario no disponible temporalmente (Código ${response.statusCode})');
+      }
+      throw Exception('Respuesta inválida del servidor (Código ${response.statusCode})');
+    }
+  }
+
   Future<http.Response> _executeWithFallback(
     String endpoint, {
     String method = 'GET',
@@ -36,6 +47,12 @@ class ApiService {
           response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 8));
         }
 
+        // If server returns a 5xx gateway error (like 502 Bad Gateway), try next candidate URL
+        if (response.statusCode >= 500) {
+          lastError = Exception('Servidor central en mantenimiento (Código ${response.statusCode})');
+          continue;
+        }
+
         _workingBaseUrl = base;
         return response;
       } catch (e) {
@@ -43,7 +60,7 @@ class ApiService {
       }
     }
 
-    throw lastError ?? Exception('No se pudo establecer conexión con el banco central');
+    throw lastError ?? Exception('No se pudo establecer conexión con la red bancaria');
   }
 
   Future<UserSession> login(String email, String password) async {
@@ -53,12 +70,14 @@ class ApiService {
       body: {'email': email.trim(), 'password': password.trim()},
     );
 
+    final data = _safeDecode(response);
     if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
       return UserSession.fromJson(data);
     } else {
-      final err = jsonDecode(utf8.decode(response.bodyBytes));
-      throw Exception(err['detail'] ?? 'Credenciales de acceso no autorizadas');
+      final msg = (data is Map && data['detail'] != null)
+          ? data['detail'].toString()
+          : 'Credenciales de acceso no autorizadas';
+      throw Exception(msg);
     }
   }
 
@@ -73,36 +92,44 @@ class ApiService {
       },
     );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
+    final data = _safeDecode(response);
+    if (response.statusCode == 200 || response.statusCode == 201) {
       return UserSession.fromJson(data);
     } else {
-      final err = jsonDecode(utf8.decode(response.bodyBytes));
-      throw Exception(err['detail'] ?? 'Error al emitir membresía');
+      final msg = (data is Map && data['detail'] != null)
+          ? data['detail'].toString()
+          : 'Error al emitir membresía institucional';
+      throw Exception(msg);
     }
   }
 
   Future<double> getBalance(String accountNumber) async {
-    final response = await _executeWithFallback(
-      '/api/account/balance?account_number=${Uri.encodeComponent(accountNumber)}',
-    );
+    try {
+      final response = await _executeWithFallback(
+        '/api/account/balance?account_number=${Uri.encodeComponent(accountNumber)}',
+      );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(response.bodyBytes));
-      return (data['balance'] is num) ? (data['balance'] as num).toDouble() : 0.0;
-    }
+      if (response.statusCode == 200) {
+        final data = _safeDecode(response);
+        return (data['balance'] is num) ? (data['balance'] as num).toDouble() : 0.0;
+      }
+    } catch (_) {}
     return 0.0;
   }
 
   Future<List<TransactionItem>> getTransactions(String accountNumber) async {
-    final response = await _executeWithFallback(
-      '/api/account/transactions?account_number=${Uri.encodeComponent(accountNumber)}',
-    );
+    try {
+      final response = await _executeWithFallback(
+        '/api/account/transactions?account_number=${Uri.encodeComponent(accountNumber)}',
+      );
 
-    if (response.statusCode == 200) {
-      final List list = jsonDecode(utf8.decode(response.bodyBytes));
-      return list.map((item) => TransactionItem.fromJson(item)).toList();
-    }
+      if (response.statusCode == 200) {
+        final data = _safeDecode(response);
+        if (data is List) {
+          return data.map((item) => TransactionItem.fromJson(item)).toList();
+        }
+      }
+    } catch (_) {}
     return [];
   }
 
@@ -115,7 +142,7 @@ class ApiService {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final data = _safeDecode(response);
         return SpeiInstructions.fromJson(data);
       }
     } catch (_) {}
@@ -147,7 +174,7 @@ class ApiService {
     );
 
     if (notifyRes.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(notifyRes.bodyBytes));
+      final data = _safeDecode(notifyRes);
       final txId = data['id'] ?? data['deposit_id'];
       if (txId != null) {
         await _executeWithFallback(
@@ -179,8 +206,11 @@ class ApiService {
     );
 
     if (res.statusCode != 200) {
-      final err = jsonDecode(utf8.decode(res.bodyBytes));
-      throw Exception(err['detail'] ?? 'Fondos insuficientes para dispersión');
+      final data = _safeDecode(res);
+      final msg = (data is Map && data['detail'] != null)
+          ? data['detail'].toString()
+          : 'Fondos insuficientes para dispersión';
+      throw Exception(msg);
     }
   }
 }

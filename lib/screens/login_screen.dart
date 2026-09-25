@@ -13,14 +13,25 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  // Mode: 0 = Iniciar Sesión, 1 = Solicitar Membresía
+  int _authMode = 0;
+
+  final TextEditingController _loginEmailCtrl = TextEditingController();
+  final TextEditingController _loginPassCtrl = TextEditingController();
+
+  final TextEditingController _signupNameCtrl = TextEditingController();
+  final TextEditingController _signupEmailCtrl = TextEditingController();
+  final TextEditingController _signupPassCtrl = TextEditingController();
+
   bool _isLoading = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    _loginEmailCtrl.dispose();
+    _loginPassCtrl.dispose();
+    _signupNameCtrl.dispose();
+    _signupEmailCtrl.dispose();
+    _signupPassCtrl.dispose();
     super.dispose();
   }
 
@@ -28,14 +39,23 @@ class _LoginScreenState extends State<LoginScreen> {
     showCupertinoDialog(
       context: context,
       builder: (ctx) => CupertinoAlertDialog(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.5),
+        ),
         content: Padding(
           padding: const EdgeInsets.only(top: 8.0),
-          child: Text(message),
+          child: Text(
+            message,
+            style: const TextStyle(fontSize: 13, height: 1.4),
+          ),
         ),
         actions: [
           CupertinoDialogAction(
-            child: const Text('Entendido', style: TextStyle(color: LuxevaTheme.goldAccent)),
+            child: const Text(
+              'Entendido',
+              style: TextStyle(color: LuxevaTheme.goldAccent, fontWeight: FontWeight.w600),
+            ),
             onPressed: () => Navigator.of(ctx).pop(),
           ),
         ],
@@ -43,148 +63,53 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _handleLogin() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-
-    if (email.isEmpty || password.isEmpty) {
-      _showCupertinoAlert('Atención', 'Ingrese su identificador institucional y clave de seguridad.');
-      return;
-    }
-
+  Future<void> _handleSubmit() async {
     HapticFeedback.lightImpact();
-    setState(() => _isLoading = true);
 
-    try {
-      final session = await ApiService.instance.login(email, password);
-      await AuthService.instance.setSession(session);
-      HapticFeedback.mediumImpact();
-    } catch (e) {
-      final msg = e.toString().replaceAll('Exception: ', '');
-      _showCupertinoAlert('Acceso Denegado', msg);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    if (_authMode == 0) {
+      // Login
+      final email = _loginEmailCtrl.text.trim();
+      final pass = _loginPassCtrl.text.trim();
+
+      if (email.isEmpty || pass.isEmpty) {
+        _showCupertinoAlert('Credenciales Requeridas', 'Por favor ingrese su correo institucional y clave de acceso.');
+        return;
+      }
+
+      setState(() => _isLoading = true);
+      try {
+        final session = await ApiService.instance.login(email, pass);
+        await AuthService.instance.setSession(session);
+        HapticFeedback.mediumImpact();
+      } catch (e) {
+        final msg = e.toString().replaceAll('Exception: ', '');
+        _showCupertinoAlert('Acceso No Autorizado', msg);
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    } else {
+      // Signup
+      final name = _signupNameCtrl.text.trim();
+      final email = _signupEmailCtrl.text.trim();
+      final pass = _signupPassCtrl.text.trim();
+
+      if (name.isEmpty || email.isEmpty || pass.isEmpty) {
+        _showCupertinoAlert('Datos Incompletos', 'Complete todos los campos para emitir su membresía privada.');
+        return;
+      }
+
+      setState(() => _isLoading = true);
+      try {
+        final session = await ApiService.instance.signup(name, email, pass);
+        await AuthService.instance.setSession(session);
+        HapticFeedback.heavyImpact();
+      } catch (e) {
+        final msg = e.toString().replaceAll('Exception: ', '');
+        _showCupertinoAlert('Error de Emisión', msg);
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
     }
-  }
-
-  void _openSignupSheet() {
-    final nameCtrl = TextEditingController();
-    final emailCtrl = TextEditingController();
-    final passCtrl = TextEditingController();
-    bool isSigningUp = false;
-
-    showCupertinoModalPopup(
-      context: context,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (ctx, setSheetState) => CupertinoActionSheet(
-          title: const Text(
-            'SOLICITUD DE MEMBRESÍA',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2.0,
-              color: LuxevaTheme.goldAccent,
-            ),
-          ),
-          message: const Text(
-            'Incorporación al Ecosistema Luxeva Private Banking',
-            style: TextStyle(fontSize: 12, color: LuxevaTheme.textSecondary),
-          ),
-          actions: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  CupertinoTextField(
-                    controller: nameCtrl,
-                    placeholder: 'Nombre y Apellidos del Titular',
-                    placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 14),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0x18FFFFFF),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: LuxevaTheme.borderGold),
-                    ),
-                    style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 15),
-                  ),
-                  const SizedBox(height: 12),
-                  CupertinoTextField(
-                    controller: emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
-                    placeholder: 'Correo Electrónico (socio@luxeva.com)',
-                    placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 14),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0x18FFFFFF),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: LuxevaTheme.borderGold),
-                    ),
-                    style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 15),
-                  ),
-                  const SizedBox(height: 12),
-                  CupertinoTextField(
-                    controller: passCtrl,
-                    obscureText: true,
-                    placeholder: 'Clave Institucional',
-                    placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 14),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0x18FFFFFF),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: LuxevaTheme.borderGold),
-                    ),
-                    style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 15),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: CupertinoButton(
-                      color: LuxevaTheme.goldAccent,
-                      borderRadius: BorderRadius.circular(14),
-                      onPressed: isSigningUp
-                          ? null
-                          : () async {
-                              final name = nameCtrl.text.trim();
-                              final email = emailCtrl.text.trim();
-                              final pass = passCtrl.text.trim();
-
-                              if (name.isEmpty || email.isEmpty || pass.isEmpty) {
-                                return;
-                              }
-
-                              setSheetState(() => isSigningUp = true);
-                              try {
-                                final session = await ApiService.instance.signup(name, email, pass);
-                                await AuthService.instance.setSession(session);
-                                if (ctx.mounted) Navigator.of(ctx).pop();
-                              } catch (e) {
-                                setSheetState(() => isSigningUp = false);
-                                _showCupertinoAlert('Error de Emisión', e.toString().replaceAll('Exception: ', ''));
-                              }
-                            },
-                      child: isSigningUp
-                          ? const CupertinoActivityIndicator(color: LuxevaTheme.obsidianBg)
-                          : const Text(
-                              'Emitir Credenciales de Socio',
-                              style: TextStyle(
-                                color: LuxevaTheme.obsidianBg,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          cancelButton: CupertinoActionSheetAction(
-            child: const Text('Cancelar', style: TextStyle(color: LuxevaTheme.textSecondary)),
-            onPressed: () => Navigator.of(sheetContext).pop(),
-          ),
-        ),
-      ),
-    );
   }
 
   @override
@@ -194,157 +119,149 @@ class _LoginScreenState extends State<LoginScreen> {
       child: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                const SizedBox(height: 10),
+
                 // Luxury Emblem
                 Container(
-                  width: 64,
-                  height: 64,
+                  width: 72,
+                  height: 72,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      colors: [LuxevaTheme.goldLight, LuxevaTheme.goldAccent, LuxevaTheme.goldDark],
+                    gradient: const RadialGradient(
+                      colors: [Color(0xFF26262F), Color(0xFF0F0F13)],
+                      center: Alignment(-0.2, -0.2),
+                      radius: 0.9,
                     ),
+                    border: Border.all(color: LuxevaTheme.goldAccent.withOpacity(0.6), width: 1.5),
                     boxShadow: [
                       BoxShadow(
-                        color: LuxevaTheme.goldAccent.withOpacity(0.25),
-                        blurRadius: 20,
+                        color: LuxevaTheme.goldAccent.withOpacity(0.2),
+                        blurRadius: 28,
                         spreadRadius: 2,
                       ),
                     ],
                   ),
-                  child: const Center(
-                    child: Text(
-                      'LX',
-                      style: TextStyle(
-                        fontFamily: 'Georgia',
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 2,
-                        color: LuxevaTheme.obsidianBg,
+                  child: Center(
+                    child: Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: LuxevaTheme.borderGold.withOpacity(0.35), width: 0.5),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'LX',
+                          style: TextStyle(
+                            fontFamily: 'Georgia',
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 2.0,
+                            color: LuxevaTheme.goldLight,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
                 // Brand Title
                 const Text(
                   'LUXEVA',
                   style: TextStyle(
                     fontFamily: 'Georgia',
-                    fontSize: 32,
+                    fontSize: 30,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 5.0,
+                    letterSpacing: 6.0,
                     color: LuxevaTheme.textPrimary,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 const Text(
                   'WEALTH & PRIVATE BANKING',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 2.5,
-                    color: LuxevaTheme.textSecondary,
+                    color: LuxevaTheme.goldAccent,
                   ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 28),
 
-                // Form Panel
-                GlassPanel(
-                  hasGoldBorder: true,
-                  padding: const EdgeInsets.all(22),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                // Segmented Selector (Acceso Privado / Emitir Membresía)
+                Container(
+                  height: 44,
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: LuxevaTheme.cardElevated,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: LuxevaTheme.borderSubtle, width: 0.5),
+                  ),
+                  child: Row(
                     children: [
-                      const Text(
-                        'IDENTIFICADOR DE ACCESO',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5,
-                          color: LuxevaTheme.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      CupertinoTextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        placeholder: 'socio@luxeva.com',
-                        placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 15),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                        decoration: BoxDecoration(
-                          color: const Color(0x10FFFFFF),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: LuxevaTheme.borderSubtle),
-                        ),
-                        style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 15),
-                      ),
-                      const SizedBox(height: 20),
-
-                      const Text(
-                        'CLAVE DE SEGURIDAD INSTITUCIONAL',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.5,
-                          color: LuxevaTheme.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      CupertinoTextField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        placeholder: '••••••••',
-                        placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 16),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                        decoration: BoxDecoration(
-                          color: const Color(0x10FFFFFF),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: LuxevaTheme.borderSubtle),
-                        ),
-                        style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 15),
-                      ),
-                      const SizedBox(height: 28),
-
-                      // Submit button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: CupertinoButton(
-                          color: LuxevaTheme.goldAccent,
-                          borderRadius: BorderRadius.circular(14),
-                          onPressed: _isLoading ? null : _handleLogin,
-                          child: _isLoading
-                              ? const CupertinoActivityIndicator(color: LuxevaTheme.obsidianBg)
-                              : const Text(
-                                  'Acceder al Club Privado',
-                                  style: TextStyle(
-                                    color: LuxevaTheme.obsidianBg,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 1.0,
-                                  ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            if (_authMode != 0) {
+                              HapticFeedback.selectionClick();
+                              setState(() => _authMode = 0);
+                            }
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            decoration: BoxDecoration(
+                              color: _authMode == 0 ? LuxevaTheme.cardBg : CupertinoColors.transparent,
+                              borderRadius: BorderRadius.circular(9),
+                              border: _authMode == 0
+                                  ? Border.all(color: LuxevaTheme.borderGold, width: 0.6)
+                                  : null,
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Ingreso de Socio',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: _authMode == 0 ? FontWeight.w700 : FontWeight.w500,
+                                  color: _authMode == 0 ? LuxevaTheme.goldLight : LuxevaTheme.textSecondary,
+                                  letterSpacing: 0.5,
                                 ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 14),
-
-                      // Waitlist / Signup
-                      Center(
-                        child: CupertinoButton(
-                          padding: EdgeInsets.zero,
-                          onPressed: _openSignupSheet,
-                          child: const Text(
-                            '¿Sin credenciales? Solicitar Membresía Exclusiva',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: LuxevaTheme.goldAccent,
-                              letterSpacing: 0.3,
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            if (_authMode != 1) {
+                              HapticFeedback.selectionClick();
+                              setState(() => _authMode = 1);
+                            }
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            decoration: BoxDecoration(
+                              color: _authMode == 1 ? LuxevaTheme.cardBg : CupertinoColors.transparent,
+                              borderRadius: BorderRadius.circular(9),
+                              border: _authMode == 1
+                                  ? Border.all(color: LuxevaTheme.borderGold, width: 0.6)
+                                  : null,
+                            ),
+                            child: Center(
+                              child: Text(
+                                'Nueva Membresía',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: _authMode == 1 ? FontWeight.w700 : FontWeight.w500,
+                                  color: _authMode == 1 ? LuxevaTheme.goldLight : LuxevaTheme.textSecondary,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -352,10 +269,151 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 20),
+
+                // Main Card Form
+                GlassPanel(
+                  hasGoldBorder: true,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_authMode == 1) ...[
+                        _buildFieldLabel('TITULAR DE LA CUENTA'),
+                        const SizedBox(height: 8),
+                        _buildInputField(
+                          controller: _signupNameCtrl,
+                          placeholder: 'Nombre y Apellidos',
+                          icon: CupertinoIcons.person,
+                          keyboardType: TextInputType.name,
+                        ),
+                        const SizedBox(height: 18),
+                      ],
+
+                      _buildFieldLabel(_authMode == 0 ? 'CORREO INSTITUCIONAL' : 'CORREO ELECTRÓNICO'),
+                      const SizedBox(height: 8),
+                      _buildInputField(
+                        controller: _authMode == 0 ? _loginEmailCtrl : _signupEmailCtrl,
+                        placeholder: 'socio@luxeva.com',
+                        icon: CupertinoIcons.mail,
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+                      const SizedBox(height: 18),
+
+                      _buildFieldLabel('CLAVE DE SEGURIDAD BLINDADA'),
+                      const SizedBox(height: 8),
+                      _buildInputField(
+                        controller: _authMode == 0 ? _loginPassCtrl : _signupPassCtrl,
+                        placeholder: '••••••••',
+                        icon: CupertinoIcons.lock_shield,
+                        obscureText: true,
+                      ),
+                      const SizedBox(height: 26),
+
+                      // Submit Button with Gold Gradient
+                      GestureDetector(
+                        onTap: _isLoading ? null : _handleSubmit,
+                        child: Container(
+                          width: double.infinity,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [LuxevaTheme.goldLight, LuxevaTheme.goldAccent, LuxevaTheme.goldDark],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            boxShadow: [
+                              BoxShadow(
+                                color: LuxevaTheme.goldAccent.withOpacity(0.25),
+                                blurRadius: 16,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: _isLoading
+                                ? const CupertinoActivityIndicator(color: LuxevaTheme.obsidianBg)
+                                : Text(
+                                    _authMode == 0 ? 'Acceder al Club Privado' : 'Emitir Credenciales de Socio',
+                                    style: const TextStyle(
+                                      color: LuxevaTheme.obsidianBg,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 22),
+
+                // Institutional Security Footnote
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(CupertinoIcons.checkmark_shield, size: 14, color: LuxevaTheme.textSecondary),
+                    SizedBox(width: 6),
+                    Text(
+                      'Custodia Blindada · SPEI Banxico 256-bit',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: LuxevaTheme.textSecondary,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildFieldLabel(String label) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.5,
+        color: LuxevaTheme.textSecondary,
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String placeholder,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    bool obscureText = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: LuxevaTheme.cardElevated,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: LuxevaTheme.borderGold.withOpacity(0.35), width: 0.8),
+      ),
+      child: CupertinoTextField(
+        controller: controller,
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        placeholder: placeholder,
+        placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        prefix: Padding(
+          padding: const EdgeInsets.only(left: 14),
+          child: Icon(icon, size: 18, color: LuxevaTheme.goldAccent),
+        ),
+        decoration: null,
+        style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 15),
       ),
     );
   }

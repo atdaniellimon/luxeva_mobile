@@ -40,5 +40,10 @@
 	<true/>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Luxeva requiere autenticación biométrica Face ID para acceder a su bóveda privada.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 </dict>
 </plist>
