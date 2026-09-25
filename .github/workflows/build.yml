@@ -1,4 +1,4 @@
-name: Build Luxeva Native (iOS & Android)
+name: Build Luxeva Mobile (iOS & Android)
 
 on:
   push:
@@ -8,73 +8,74 @@ on:
   workflow_dispatch:
 
 jobs:
-  build_android:
-    name: Compilar APK Android
+  build-android:
+    name: Build Android APK
     runs-on: ubuntu-latest
     steps:
-      - name: Clonar Repositorio
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Configurar Java 17
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Configurar Flutter SDK
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: Generar Scaffolding Nativo (iOS & Android)
-        run: flutter create . --org com.luxeva --project-name luxeva_mobile --platforms=android,ios
+      - name: Ensure Platform Scaffolding
+        run: flutter create --platforms=android --org com.luxeva .
 
-      - name: Descargar Dependencias
+      - name: Get Dependencies
         run: flutter pub get
 
-      - name: Compilar APK Release
+      - name: Build Release APK
         run: flutter build apk --release
 
-      - name: Publicar Artefacto APK
+      - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: luxeva-android-release
+          name: Luxeva-Android-Release-APK
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
 
-  build_ios:
-    name: Compilar IPA iOS
-    runs-on: macos-latest
+  build-ios:
+    name: Build iOS IPA
+    runs-on: macos-14
     steps:
-      - name: Clonar Repositorio
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Configurar Flutter SDK
+      - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
 
-      - name: Generar Scaffolding Nativo (iOS & Android)
-        run: flutter create . --org com.luxeva --project-name luxeva_mobile --platforms=android,ios
+      - name: Ensure Platform Scaffolding
+        run: flutter create --platforms=ios --org com.luxeva .
 
-      - name: Descargar Dependencias
+      - name: Get Dependencies
         run: flutter pub get
 
-      - name: Compilar iOS Release (Unsigned)
+      - name: Build iOS (No Codesign)
         run: flutter build ios --release --no-codesign
 
-      - name: Empaquetar IPA para Sideloading (AltStore / Sideloadly / TrollStore)
+      - name: Package Payload as IPA
         run: |
-          mkdir -p Payload
-          cp -r build/ios/iphoneos/Runner.app Payload/
-          zip -r Luxeva.ipa Payload
-          rm -rf Payload
+          mkdir -p build/ios/iphoneos/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
+          cd build/ios/iphoneos
+          zip -r Luxeva-Release.ipa Payload
+          cd -
 
-      - name: Publicar Artefacto IPA
+      - name: Upload iOS IPA
         uses: actions/upload-artifact@v4
         with:
-          name: luxeva-ios-ipa
-          path: Luxeva.ipa
+          name: Luxeva-iOS-Release-IPA
+          path: build/ios/iphoneos/Luxeva-Release.ipa
           if-no-files-found: error

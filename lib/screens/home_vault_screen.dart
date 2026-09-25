@@ -1,375 +1,317 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../models/models.dart';
+import '../config/theme.dart';
+import '../models/transaction.dart';
+import '../models/user.dart';
 import '../services/api_service.dart';
-import '../theme/luxeva_theme.dart';
-import 'deposit_screen.dart';
+import '../services/auth_service.dart';
+import '../widgets/glass_panel.dart';
+import '../widgets/luxury_card.dart';
+import 'account_screen.dart';
+import 'spei_deposit_screen.dart';
+import 'transactions_screen.dart';
 import 'transfer_screen.dart';
 
 class HomeVaultScreen extends StatefulWidget {
-  final Function(int) onTabChange;
-  const HomeVaultScreen({super.key, required this.onTabChange});
+  final UserSession user;
+
+  const HomeVaultScreen({super.key, required this.user});
 
   @override
   State<HomeVaultScreen> createState() => _HomeVaultScreenState();
 }
 
 class _HomeVaultScreenState extends State<HomeVaultScreen> {
-  UserSession? _session;
-  List<TransactionItem> _transactions = [];
-  bool _isLoading = true;
+  List<TransactionItem> _recentTransactions = [];
+  bool _isLoadingTxs = true;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _fetchRecentTransactions();
   }
 
-  Future<void> _loadData() async {
-    _session = ApiService.instance.currentSession ?? await ApiService.instance.loadSession();
-    if (_session != null && _session!.accountNumber.isNotEmpty) {
-      try {
-        final bal = await ApiService.instance.refreshBalance(_session!.accountNumber);
-        final txs = await ApiService.instance.getTransactions(_session!.accountNumber);
-        if (mounted) {
-          setState(() {
-            _session = _session!.copyWith(balance: bal);
-            _transactions = txs;
-            _isLoading = false;
-          });
-        }
-      } catch (e) {
-        if (mounted) setState(() => _isLoading = false);
+  Future<void> _fetchRecentTransactions() async {
+    try {
+      final txs = await ApiService.instance.getTransactions(widget.user.accountNumber);
+      if (mounted) {
+        setState(() {
+          _recentTransactions = txs.take(4).toList();
+          _isLoadingTxs = false;
+        });
       }
-    } else {
-      if (mounted) setState(() => _isLoading = false);
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingTxs = false);
     }
-  }
-
-  void _showConciergeSheet() {
-    HapticFeedback.lightImpact();
-    showCupertinoModalPopup(
-      context: context,
-      builder: (ctx) => CupertinoActionSheet(
-        title: const Text(
-          'Banca Privada Institucional',
-          style: TextStyle(fontFamily: 'serif', letterSpacing: 1),
-        ),
-        message: const Text('Oficial de Cuenta Privado asignado: Lic. Rodrigo Valenzuela (Luxeva Prime Desk)'),
-        actions: [
-          CupertinoActionSheetAction(
-            child: const Text('Llamar a Mesa de Dinero', style: TextStyle(color: LuxevaTheme.accentGold)),
-            onPressed: () => Navigator.pop(ctx),
-          ),
-          CupertinoActionSheetAction(
-            child: const Text('Solicitar Línea de Crédito Privada', style: TextStyle(color: LuxevaTheme.accentGold)),
-            onPressed: () => Navigator.pop(ctx),
-          ),
-          CupertinoActionSheetAction(
-            child: const Text('Auditoría Fiscal y Patrimonial', style: TextStyle(color: LuxevaTheme.textPrimary)),
-            onPressed: () => Navigator.pop(ctx),
-          ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          isDefaultAction: true,
-          child: const Text('Cerrar'),
-          onPressed: () => Navigator.pop(ctx),
-        ),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final session = _session;
+    return ValueListenableBuilder<UserSession?>(
+      valueListenable: AuthService.instance.currentSession,
+      builder: (context, liveUser, _) {
+        final currentUser = liveUser ?? widget.user;
 
-    return CupertinoPageScaffold(
-      backgroundColor: LuxevaTheme.background,
-      child: SafeArea(
-        bottom: false,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            CupertinoSliverRefreshControl(
-              onRefresh: _loadData,
-            ),
-            // Header
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    GestureDetector(
-                      onTap: () => widget.onTabChange(3), // Navigate to account tab
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [LuxevaTheme.accentGoldLight, LuxevaTheme.accentGold],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          shape: BoxShape.circle,
-                          boxShadow: const [
-                            BoxShadow(color: Color(0x33CBBD93), blurRadius: 10, offset: Offset(0, 3)),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            session?.initials ?? 'LX',
-                            style: const TextStyle(
-                              color: LuxevaTheme.background,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                      ),
+        return CupertinoPageScaffold(
+          backgroundColor: LuxevaTheme.obsidianBg,
+          navigationBar: CupertinoNavigationBar(
+            backgroundColor: LuxevaTheme.glassBg,
+            leading: GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.of(context).push(
+                  CupertinoPageRoute(builder: (_) => AccountScreen(user: currentUser)),
+                );
+              },
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [LuxevaTheme.goldLight, LuxevaTheme.goldAccent],
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    currentUser.initials,
+                    style: const TextStyle(
+                      fontFamily: 'Georgia',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: LuxevaTheme.obsidianBg,
                     ),
-                    const Text(
-                      'LUXEVA',
-                      style: TextStyle(
-                        fontFamily: 'serif',
-                        fontSize: 18,
-                        letterSpacing: 3,
-                        fontWeight: FontWeight.bold,
-                        color: LuxevaTheme.textPrimary,
-                      ),
-                    ),
-                    CupertinoButton(
-                      padding: EdgeInsets.zero,
-                      child: const Icon(CupertinoIcons.bell, color: LuxevaTheme.textPrimary, size: 22),
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                      },
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
-
-            // Hero Balance Section
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                child: Column(
-                  children: [
-                    const Text(
-                      'PATRIMONIO LÍQUIDO DISPONIBLE',
-                      style: TextStyle(
-                        fontSize: 10,
-                        letterSpacing: 1.8,
-                        fontWeight: FontWeight.w600,
-                        color: LuxevaTheme.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      session?.formattedBalance ?? '\$0.00 MXN',
-                      style: const TextStyle(
-                        fontFamily: 'serif',
-                        fontSize: 40,
-                        letterSpacing: -1,
-                        fontWeight: FontWeight.w500,
-                        color: LuxevaTheme.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
+            middle: const Text(
+              'LUXEVA',
+              style: TextStyle(
+                fontFamily: 'Georgia',
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 3.0,
+                color: LuxevaTheme.textPrimary,
               ),
             ),
+            trailing: CupertinoButton(
+              padding: EdgeInsets.zero,
+              child: const Icon(CupertinoIcons.bell, size: 20, color: LuxevaTheme.textPrimary),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                Navigator.of(context).push(
+                  CupertinoPageRoute(builder: (_) => TransactionsScreen(user: currentUser)),
+                );
+              },
+            ),
+          ),
+          child: SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
+              children: [
+                // Available Balance Container
+                Center(
+                  child: Column(
+                    children: [
+                      const Text(
+                        'PATRIMONIO LÍQUIDO DISPONIBLE',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 2.0,
+                          color: LuxevaTheme.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        currentUser.formattedBalance,
+                        style: const TextStyle(
+                          fontFamily: 'Georgia',
+                          fontSize: 32,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
+                          color: LuxevaTheme.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
 
-            // Quick Actions Bar
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                // Physical Metal Card Widget
+                LuxuryCardWidget(user: currentUser),
+                const SizedBox(height: 24),
+
+                // Quick Actions Bar
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildActionButton(
                       icon: CupertinoIcons.arrow_up_right,
                       label: 'Transferir',
                       onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.push(
-                          context,
-                          CupertinoPageRoute(builder: (_) => const TransferScreen()),
-                        ).then((_) => _loadData());
+                        Navigator.of(context).push(
+                          CupertinoPageRoute(builder: (_) => TransferScreen(user: currentUser)),
+                        );
                       },
                     ),
                     _buildActionButton(
                       icon: CupertinoIcons.plus,
                       label: 'Fondear',
                       onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.push(
-                          context,
-                          CupertinoPageRoute(builder: (_) => const DepositScreen()),
-                        ).then((_) => _loadData());
+                        Navigator.of(context).push(
+                          CupertinoPageRoute(builder: (_) => SpeiDepositScreen(user: currentUser)),
+                        );
                       },
                     ),
                     _buildActionButton(
                       icon: CupertinoIcons.creditcard,
                       label: 'Instrumentos',
-                      onTap: () => widget.onTabChange(2),
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                      },
                     ),
                     _buildActionButton(
-                      icon: CupertinoIcons.ellipsis,
-                      label: 'Banca Privada',
-                      onTap: _showConciergeSheet,
+                      icon: CupertinoIcons.list_bullet,
+                      label: 'Bitácora',
+                      onTap: () {
+                        Navigator.of(context).push(
+                          CupertinoPageRoute(builder: (_) => TransactionsScreen(user: currentUser)),
+                        );
+                      },
                     ),
                   ],
                 ),
-              ),
-            ),
+                const SizedBox(height: 32),
 
-            // Transactions Section Header
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 36, 20, 14),
-                child: Row(
+                // Recent Operations Header
+                Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'Bitácora de Operaciones',
+                      'BITÁCORA DE OPERACIONES',
                       style: TextStyle(
-                        fontFamily: 'serif',
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: LuxevaTheme.textPrimary,
-                      ),
-                    ),
-                    Text(
-                      '${_transactions.length} registros',
-                      style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
                         color: LuxevaTheme.textSecondary,
                       ),
                     ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      child: const Text(
+                        'Ver todos',
+                        style: TextStyle(fontSize: 12, color: LuxevaTheme.goldAccent, fontWeight: FontWeight.w600),
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          CupertinoPageRoute(builder: (_) => TransactionsScreen(user: currentUser)),
+                        );
+                      },
+                    ),
                   ],
                 ),
-              ),
-            ),
+                const SizedBox(height: 8),
 
-            // Transactions List or Empty State
-            if (_isLoading)
-              const SliverFillRemaining(
-                child: Center(child: CupertinoActivityIndicator(color: LuxevaTheme.accentGold)),
-              )
-            else if (_transactions.isEmpty)
-              SliverToBoxAdapter(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  padding: const EdgeInsets.symmetric(vertical: 40),
-                  decoration: LuxevaTheme.glassCardDecoration,
-                  child: const Column(
-                    children: [
-                      Icon(CupertinoIcons.tray, size: 36, color: LuxevaTheme.accentGold),
-                      SizedBox(height: 12),
-                      Text(
-                        'SIN MOVIMIENTOS AÚN',
-                        style: TextStyle(
-                          fontSize: 11,
-                          letterSpacing: 1.5,
-                          fontWeight: FontWeight.w600,
-                          color: LuxevaTheme.textSecondary,
-                        ),
+                // Recent Operations List
+                if (_isLoadingTxs)
+                  const Padding(
+                    padding: EdgeInsets.all(30.0),
+                    child: Center(child: CupertinoActivityIndicator(color: LuxevaTheme.goldAccent)),
+                  )
+                else if (_recentTransactions.isEmpty)
+                  GlassPanel(
+                    padding: const EdgeInsets.symmetric(vertical: 36),
+                    child: const Center(
+                      child: Column(
+                        children: [
+                          Icon(CupertinoIcons.tray, size: 30, color: LuxevaTheme.goldAccent),
+                          SizedBox(height: 8),
+                          Text(
+                            'SIN MOVIMIENTOS RECIENTES',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.2,
+                              color: LuxevaTheme.textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final tx = _transactions[index];
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: LuxevaTheme.card,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: LuxevaTheme.borderSubtle),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: tx.isPositive
-                                    ? const Color(0x1A34C759)
-                                    : const Color(0x1AFF453A),
-                                shape: BoxShape.circle,
+                    ),
+                  )
+                else
+                  ..._recentTransactions.map((tx) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: GlassPanel(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          borderRadius: 16,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: tx.isPositive
+                                      ? LuxevaTheme.greenPositive.withOpacity(0.12)
+                                      : LuxevaTheme.goldAccent.withOpacity(0.12),
+                                ),
+                                child: Icon(
+                                  tx.isPositive
+                                      ? CupertinoIcons.arrow_down_left
+                                      : CupertinoIcons.arrow_up_right,
+                                  size: 16,
+                                  color: tx.isPositive
+                                      ? LuxevaTheme.greenPositive
+                                      : LuxevaTheme.goldAccent,
+                                ),
                               ),
-                              child: Icon(
-                                tx.isPositive
-                                    ? CupertinoIcons.arrow_down_left
-                                    : CupertinoIcons.arrow_up_right,
-                                color: tx.isPositive
-                                    ? LuxevaTheme.greenPositive
-                                    : LuxevaTheme.redNegative,
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    tx.description,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                      color: LuxevaTheme.textPrimary,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      tx.description,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: LuxevaTheme.textPrimary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    tx.createdAt,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      color: LuxevaTheme.textSecondary,
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      tx.createdAt,
+                                      style: const TextStyle(fontSize: 11, color: LuxevaTheme.textSecondary),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            Text(
-                              tx.formattedAmount,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                color: tx.isPositive
-                                    ? LuxevaTheme.greenPositive
-                                    : LuxevaTheme.textPrimary,
+                              Text(
+                                tx.formattedAmount,
+                                style: TextStyle(
+                                  fontFamily: 'Georgia',
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: tx.isPositive
+                                      ? LuxevaTheme.greenPositive
+                                      : LuxevaTheme.redNegative,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      );
-                    },
-                    childCount: _transactions.length,
-                  ),
-                ),
-              ),
-
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 100),
+                      )),
+                const SizedBox(height: 30),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -379,26 +321,37 @@ class _HomeVaultScreenState extends State<HomeVaultScreen> {
     required VoidCallback onTap,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       child: Column(
         children: [
           Container(
-            width: 58,
-            height: 58,
+            width: 52,
+            height: 52,
             decoration: BoxDecoration(
-              color: const Color(0x1ACBBD93),
               shape: BoxShape.circle,
-              border: Border.all(color: LuxevaTheme.borderGold, width: 1.2),
+              color: LuxevaTheme.cardElevated,
+              border: Border.all(color: LuxevaTheme.borderGold, width: 1.0),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x30000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
-            child: Icon(icon, color: LuxevaTheme.accentGold, size: 24),
+            child: Icon(icon, size: 20, color: LuxevaTheme.goldAccent),
           ),
           const SizedBox(height: 8),
           Text(
             label,
             style: const TextStyle(
               fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: LuxevaTheme.textPrimary,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+              color: LuxevaTheme.textSecondary,
             ),
           ),
         ],

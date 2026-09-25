@@ -1,84 +1,69 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:local_auth/local_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../models/models.dart';
+import '../config/api_constants.dart';
+import '../models/user.dart';
+import '../models/transaction.dart';
+import '../models/spei_details.dart';
 
 class ApiService {
   static final ApiService instance = ApiService._internal();
   ApiService._internal();
 
-  static const List<String> candidateHosts = [
-    'https://luxeva.daniellimon.uk',
-    'http://api.luxeva.daniellimon.uk',
-    'http://127.0.0.1:8000',
-  ];
+  String? _workingBaseUrl;
 
-  String? _workingHost;
-  final LocalAuthentication _localAuth = LocalAuthentication();
-
-  UserSession? currentSession;
-
-  Future<http.Response> _request(
-    String path, {
+  Future<http.Response> _executeWithFallback(
+    String endpoint, {
     String method = 'GET',
-    Map<String, String>? headers,
-    dynamic body,
+    Map<String, dynamic>? body,
   }) async {
-    final List<String> hostsToTry = _workingHost != null
-        ? [_workingHost!, ...candidateHosts.where((h) => h != _workingHost)]
-        : candidateHosts;
+    final candidates = _workingBaseUrl != null
+        ? [_workingBaseUrl!, ...ApiConstants.candidateBaseUrls.where((u) => u != _workingBaseUrl)]
+        : ApiConstants.candidateBaseUrls;
 
-    Object? lastError;
-    final defaultHeaders = {'Content-Type': 'application/json', ...?headers};
-    final encodedBody = body != null ? jsonEncode(body) : null;
-
-    for (final host in hostsToTry) {
+    Exception? lastError;
+    for (final base in candidates) {
       try {
-        final url = Uri.parse('$host$path');
-        http.Response res;
+        final cleanEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
+        final uri = Uri.parse('$base$cleanEndpoint');
+        final headers = {'Content-Type': 'application/json'};
+
+        http.Response response;
         if (method == 'POST') {
-          res = await http
-              .post(url, headers: defaultHeaders, body: encodedBody)
+          response = await http
+              .post(uri, headers: headers, body: jsonEncode(body ?? {}))
               .timeout(const Duration(seconds: 8));
         } else {
-          res = await http
-              .get(url, headers: defaultHeaders)
-              .timeout(const Duration(seconds: 8));
+          response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 8));
         }
-        _workingHost = host;
-        return res;
+
+        _workingBaseUrl = base;
+        return response;
       } catch (e) {
-        lastError = e;
-        debugPrint('[Luxeva Client] Falló $host$path: $e');
+        lastError = e is Exception ? e : Exception(e.toString());
       }
     }
-    throw Exception('Error de conexión con el banco: $lastError');
+
+    throw lastError ?? Exception('No se pudo establecer conexión con el banco central');
   }
 
-  // ===== AUTHENTICATION =====
   Future<UserSession> login(String email, String password) async {
-    final res = await _request(
+    final response = await _executeWithFallback(
       '/login',
       method: 'POST',
       body: {'email': email.trim(), 'password': password.trim()},
     );
 
-    if (res.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(res.bodyBytes));
-      final user = UserSession.fromJson(data);
-      currentSession = user;
-      await saveSession(user);
-      return user;
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return UserSession.fromJson(data);
     } else {
-      final err = jsonDecode(utf8.decode(res.bodyBytes));
-      throw Exception(err['detail'] ?? 'Credenciales incorrectas');
+      final err = jsonDecode(utf8.decode(response.bodyBytes));
+      throw Exception(err['detail'] ?? 'Credenciales de acceso no autorizadas');
     }
   }
 
   Future<UserSession> signup(String fullName, String email, String password) async {
-    final res = await _request(
+    final response = await _executeWithFallback(
       '/signup',
       method: 'POST',
       body: {
@@ -88,109 +73,89 @@ class ApiService {
       },
     );
 
-    if (res.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(res.bodyBytes));
-      final user = UserSession.fromJson(data);
-      currentSession = user;
-      await saveSession(user);
-      return user;
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return UserSession.fromJson(data);
     } else {
-      final err = jsonDecode(utf8.decode(res.bodyBytes));
-      throw Exception(err['detail'] ?? 'Error al aperturar cuenta');
+      final err = jsonDecode(utf8.decode(response.bodyBytes));
+      throw Exception(err['detail'] ?? 'Error al emitir membresía');
     }
   }
 
-  // ===== BIOMETRICS (FACE ID / TOUCH ID) =====
-  Future<bool> canUseBiometrics() async {
-    try {
-      final canCheck = await _localAuth.canCheckBiometrics;
-      final isSupported = await _localAuth.isDeviceSupported();
-      return canCheck && isSupported;
-    } catch (_) {
-      return false;
-    }
-  }
+  Future<double> getBalance(String accountNumber) async {
+    final response = await _executeWithFallback(
+      '/api/account/balance?account_number=${Uri.encodeComponent(accountNumber)}',
+    );
 
-  Future<bool> authenticateBiometrics() async {
-    try {
-      return await _localAuth.authenticate(
-        localizedReason: 'Acceso seguro al Club Privado Luxeva',
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: true,
-        ),
-      );
-    } catch (e) {
-      debugPrint('Biometrics error: $e');
-      return false;
+    if (response.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
+      return (data['balance'] is num) ? (data['balance'] as num).toDouble() : 0.0;
     }
-  }
-
-  // ===== DATA SYNC =====
-  Future<double> refreshBalance(String accountNumber) async {
-    final res = await _request('/api/account/balance?account_number=${Uri.encodeComponent(accountNumber)}');
-    if (res.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(res.bodyBytes));
-      final newBalance = (data['balance'] is num) ? (data['balance'] as num).toDouble() : 0.0;
-      if (currentSession != null) {
-        currentSession = currentSession!.copyWith(balance: newBalance);
-        await saveSession(currentSession!);
-      }
-      return newBalance;
-    }
-    return currentSession?.balance ?? 0.0;
+    return 0.0;
   }
 
   Future<List<TransactionItem>> getTransactions(String accountNumber) async {
-    final res = await _request('/api/account/transactions?account_number=${Uri.encodeComponent(accountNumber)}');
-    if (res.statusCode == 200) {
-      final List data = jsonDecode(utf8.decode(res.bodyBytes));
-      return data.map((item) => TransactionItem.fromJson(item)).toList();
+    final response = await _executeWithFallback(
+      '/api/account/transactions?account_number=${Uri.encodeComponent(accountNumber)}',
+    );
+
+    if (response.statusCode == 200) {
+      final List list = jsonDecode(utf8.decode(response.bodyBytes));
+      return list.map((item) => TransactionItem.fromJson(item)).toList();
     }
     return [];
   }
 
-  Future<SpeiDetails> getSpeiInstructions(String accountNumber) async {
-    final res = await _request(
-      '/api/deposit/spei-instructions',
-      method: 'POST',
-      body: {'account_number': accountNumber},
-    );
+  Future<SpeiInstructions> getSpeiInstructions(String accountNumber) async {
+    try {
+      final response = await _executeWithFallback(
+        '/api/deposit/spei-instructions',
+        method: 'POST',
+        body: {'account_number': accountNumber},
+      );
 
-    if (res.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(res.bodyBytes));
-      return SpeiDetails.fromJson(data);
-    }
-    throw Exception('No se pudieron obtener las coordenadas SPEI');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        return SpeiInstructions.fromJson(data);
+      }
+    } catch (_) {}
+
+    return SpeiInstructions(
+      bankName: ApiConstants.defaultBankName,
+      clabe: ApiConstants.defaultClabe,
+      beneficiary: ApiConstants.defaultBeneficiary,
+      concept: accountNumber.isNotEmpty ? accountNumber : 'LX-000000',
+      accountNumber: accountNumber,
+    );
   }
 
-  Future<void> confirmSpeiDeposit({
+  Future<void> notifyAndApproveDeposit({
     required String accountNumber,
     required double amount,
     required String concept,
     String? trackingKey,
   }) async {
-    final res = await _request(
+    final notifyRes = await _executeWithFallback(
       '/api/deposit/notify',
       method: 'POST',
       body: {
         'account_number': accountNumber,
         'amount': amount,
         'concept': concept,
-        'tracking_key': trackingKey,
+        if (trackingKey != null && trackingKey.isNotEmpty) 'tracking_key': trackingKey,
       },
     );
 
-    if (res.statusCode == 200) {
-      final data = jsonDecode(utf8.decode(res.bodyBytes));
-      final depositId = data['id'] ?? data['deposit_id'];
-      // Instant approval in ecosystem
-      await _request(
-        '/api/deposit/approve',
-        method: 'POST',
-        body: {'transaction_id': depositId},
-      );
-      await refreshBalance(accountNumber);
+    if (notifyRes.statusCode == 200) {
+      final data = jsonDecode(utf8.decode(notifyRes.bodyBytes));
+      final txId = data['id'] ?? data['deposit_id'];
+      if (txId != null) {
+        await _executeWithFallback(
+          '/api/deposit/approve',
+          method: 'POST',
+          body: {'transaction_id': txId},
+        );
+      }
     } else {
       throw Exception('Fallo en la instrucción de acreditación SPEI');
     }
@@ -198,51 +163,24 @@ class ApiService {
 
   Future<void> sendTransfer({
     required String accountNumber,
-    required String recipient,
+    required String to,
     required double amount,
     required String concept,
   }) async {
-    final res = await _request(
+    final res = await _executeWithFallback(
       '/api/service/charge',
       method: 'POST',
       body: {
         'account_number': accountNumber,
         'service': 'transferencia',
         'amount': amount,
-        'concept': '$concept a $recipient',
+        'concept': '$concept a $to',
       },
     );
 
-    if (res.statusCode == 200) {
-      await refreshBalance(accountNumber);
-    } else {
+    if (res.statusCode != 200) {
       final err = jsonDecode(utf8.decode(res.bodyBytes));
-      throw Exception(err['detail'] ?? 'Fondos insuficientes para la transferencia');
+      throw Exception(err['detail'] ?? 'Fondos insuficientes para dispersión');
     }
-  }
-
-  // ===== PERSISTENCE =====
-  Future<void> saveSession(UserSession session) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('luxeva_session', jsonEncode(session.toJson()));
-  }
-
-  Future<UserSession?> loadSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('luxeva_session');
-    if (raw != null) {
-      try {
-        final data = jsonDecode(raw);
-        currentSession = UserSession.fromJson(data);
-        return currentSession;
-      } catch (_) {}
-    }
-    return null;
-  }
-
-  Future<void> clearSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('luxeva_session');
-    currentSession = null;
   }
 }

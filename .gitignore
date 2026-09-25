@@ -16,6 +16,9 @@ migrate_working_dir/
 *.iws
 .idea/
 
+# Visual Studio Code
+.vscode/
+
 # Flutter/Dart/Pub related
 **/doc/api/
 .dart_tool/
@@ -34,6 +37,8 @@ migrate_working_dir/
 **/android/gradlew.bat
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
+**/android/key.properties
+*.jks
 
 # iOS/XCode related
 **/ios/**/*.mode1v3
@@ -54,19 +59,9 @@ migrate_working_dir/
 **/ios/.generated/
 **/ios/Flutter/App.framework
 **/ios/Flutter/Flutter.framework
-**/ios/Flutter/Flutter.podspec
 **/ios/Flutter/Generated.xcconfig
 **/ios/Flutter/app.flx
 **/ios/Flutter/app.zip
 **/ios/Flutter/flutter_assets/
-**/ios/Flutter/flutter_export_environment.sh
 **/ios/ServiceDefinitions.json
-**/ios/Runner/GeneratedPluginRegistrant.h
-**/ios/Runner/GeneratedPluginRegistrant.m
-
-# Exceptions to allow tracking
-!**/ios/**/default.mode1v3
-!**/ios/**/default.mode2v3
-!**/ios/**/default.pbxuser
-!**/ios/**/default.perspectivev3
-!/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
+**/ios/Runner/GeneratedPluginRegistrant.*

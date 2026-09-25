@@ -1,175 +1,195 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../models/models.dart';
-import '../theme/luxeva_theme.dart';
+import '../config/theme.dart';
+import '../models/user.dart';
 
-class LuxuryCardWidget extends StatefulWidget {
-  final UserSession session;
-  const LuxuryCardWidget({super.key, required this.session});
+class LuxuryCardWidget extends StatelessWidget {
+  final UserSession user;
 
-  @override
-  State<LuxuryCardWidget> createState() => _LuxuryCardWidgetState();
-}
-
-class _LuxuryCardWidgetState extends State<LuxuryCardWidget> {
-  bool _showCvv = false;
-  String _cvv = '849';
-
-  void _regenerateCvv() {
-    HapticFeedback.mediumImpact();
-    setState(() {
-      _showCvv = !_showCvv;
-      if (_showCvv) {
-        _cvv = (100 + (DateTime.now().millisecond % 899)).toString();
-      }
-    });
-  }
+  const LuxuryCardWidget({
+    super.key,
+    required this.user,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: 215,
-      padding: const EdgeInsets.all(24),
+      height: 200,
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
         gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [
-            Color(0xFF26262E),
+            Color(0xFF22222A),
             Color(0xFF141418),
             Color(0xFF0A0A0D),
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          stops: [0.0, 0.55, 1.0],
         ),
-        borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: LuxevaTheme.borderGold,
-          width: 1.5,
+          width: 1.2,
         ),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x99000000),
-            blurRadius: 32,
-            offset: Offset(0, 16),
+            color: Color(0x80000000),
+            blurRadius: 30,
+            offset: Offset(0, 15),
           ),
           BoxShadow(
             color: Color(0x1ACBBD93),
             blurRadius: 10,
-            spreadRadius: 1,
+            spreadRadius: -2,
+            offset: Offset(0, 0),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Stack(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Metallic Chip
-              Container(
-                width: 44,
-                height: 32,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFDFD4B3), Color(0xFFCBBD93), Color(0xFF9E8B5B)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFF5E5437), width: 0.8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Container(width: 1, color: const Color(0x66000000)),
-                    Container(width: 1, color: const Color(0x66000000)),
+          // Metallic specular gloss overlay
+          Positioned(
+            top: -60,
+            right: -60,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    LuxevaTheme.goldLight.withOpacity(0.12),
+                    const Color(0x00000000),
                   ],
                 ),
               ),
-              const Text(
-                'LUXEVA',
-                style: TextStyle(
-                  fontFamily: 'serif',
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 3,
-                  color: LuxevaTheme.accentGold,
-                ),
-              ),
-            ],
-          ),
-          // Account / Card number
-          Text(
-            '•••• •••• •••• ${widget.session.lastFourDigits}',
-            style: const TextStyle(
-              fontSize: 19,
-              letterSpacing: 3,
-              fontWeight: FontWeight.w600,
-              color: LuxevaTheme.textPrimary,
-              fontFamily: 'Courier',
             ),
           ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'TITULAR ACREDITADO',
-                    style: TextStyle(
-                      fontSize: 9,
-                      letterSpacing: 1.5,
-                      fontWeight: FontWeight.w600,
-                      color: LuxevaTheme.textMuted,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    widget.session.fullName.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      letterSpacing: 1,
-                      fontWeight: FontWeight.w600,
-                      color: LuxevaTheme.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-              GestureDetector(
-                onTap: _regenerateCvv,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: const Color(0x1ACBBD93),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: LuxevaTheme.borderGold, width: 1),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        CupertinoIcons.lock_shield,
-                        size: 13,
-                        color: LuxevaTheme.accentGold,
+          Padding(
+            padding: const EdgeInsets.all(22.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Top row: Chip and Brand
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Gold EMV Chip
+                    Container(
+                      width: 42,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFC0A86A),
+                        borderRadius: BorderRadius.circular(6),
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFFDFD4B3),
+                            Color(0xFFCBBD93),
+                            Color(0xFFA69668),
+                          ],
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x40000000),
+                            blurRadius: 4,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        _showCvv ? 'CVV $_cvv' : 'CVV DINÁMICO',
-                        style: const TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                          color: LuxevaTheme.accentGold,
+                      child: Center(
+                        child: Container(
+                          width: 32,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: const Color(0x40000000), width: 1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
                       ),
-                    ],
+                    ),
+                    const Text(
+                      'LUXEVA',
+                      style: TextStyle(
+                        fontFamily: 'Georgia',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 3.5,
+                        color: LuxevaTheme.goldLight,
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Card Number
+                Text(
+                  user.maskedAccount,
+                  style: const TextStyle(
+                    fontFamily: 'Courier',
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 2.5,
+                    color: LuxevaTheme.textPrimary,
                   ),
                 ),
-              ),
-            ],
+
+                // Bottom row: Member Name and Tier
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'TITULAR ACREDITADO',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.2,
+                            color: LuxevaTheme.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          user.fullName.toUpperCase(),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.0,
+                            color: LuxevaTheme.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text(
+                          'VENCE',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.2,
+                            color: LuxevaTheme.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '12/29',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.0,
+                            color: LuxevaTheme.goldAccent.withOpacity(0.9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
