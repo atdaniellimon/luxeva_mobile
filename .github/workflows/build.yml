@@ -7,6 +7,10 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-android:
     name: Build Android APK
@@ -34,7 +38,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Release APK
-        run: flutter build apk --release
+        run: flutter build apk --release --android-skip-build-dependency-validation
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
@@ -62,15 +66,44 @@ jobs:
       - name: Get Dependencies
         run: flutter pub get
 
-      - name: Build iOS (No Codesign)
-        run: flutter build ios --release --no-codesign
+      - name: Prepare Flutter iOS Build
+        run: flutter build ios --config-only --release --no-codesign
+
+      - name: Build iOS App with Xcode
+        run: |
+          set -o pipefail
+          if [ -d "ios/Runner.xcworkspace" ]; then
+            xcodebuild build \
+              -workspace ios/Runner.xcworkspace \
+              -scheme Runner \
+              -configuration Release \
+              -sdk iphoneos \
+              -destination "generic/platform=iOS" \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              AD_HOC_CODE_SIGNING_ALLOWED=YES \
+              CONFIGURATION_BUILD_DIR="$(pwd)/build/ios/iphoneos"
+          else
+            xcodebuild build \
+              -project ios/Runner.xcodeproj \
+              -scheme Runner \
+              -configuration Release \
+              -sdk iphoneos \
+              -destination "generic/platform=iOS" \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              AD_HOC_CODE_SIGNING_ALLOWED=YES \
+              CONFIGURATION_BUILD_DIR="$(pwd)/build/ios/iphoneos"
+          fi
 
       - name: Package Payload as IPA
         run: |
           mkdir -p build/ios/iphoneos/Payload
           cp -r build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/
           cd build/ios/iphoneos
-          zip -r Luxeva-Release.ipa Payload
+          zip -r -y Luxeva-Release.ipa Payload
           cd -
 
       - name: Upload iOS IPA
