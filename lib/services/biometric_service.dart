@@ -8,6 +8,8 @@ class BiometricService {
 
   final LocalAuthentication _auth = LocalAuthentication();
   static const String _prefKey = 'luxeva_biometrics_enabled';
+  bool _isAuthenticating = false;
+  bool get isAuthenticating => _isAuthenticating;
 
   Future<bool> isBiometricsAvailable() async {
     try {
@@ -29,7 +31,6 @@ class BiometricService {
 
   Future<bool> isEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    // Default enabled for private security if available
     return prefs.getBool(_prefKey) ?? false;
   }
 
@@ -41,11 +42,14 @@ class BiometricService {
   Future<bool> authenticate({
     String reason = 'Confirme su identidad para acceder a Luxeva',
   }) async {
+    if (_isAuthenticating) return false;
+    _isAuthenticating = true;
+
     try {
       final bool isAvail = await isBiometricsAvailable();
       if (!isAvail) return true; // If device has no hardware, bypass gracefully
 
-      return await _auth.authenticate(
+      final success = await _auth.authenticate(
         localizedReason: reason,
         options: const AuthenticationOptions(
           stickyAuth: true,
@@ -53,10 +57,15 @@ class BiometricService {
           useErrorDialogs: true,
         ),
       );
+      return success;
     } on PlatformException catch (_) {
       return false;
     } catch (_) {
       return false;
+    } finally {
+      // Cooldown to avoid system sheet dismiss re-triggering lifecycle events
+      await Future.delayed(const Duration(milliseconds: 600));
+      _isAuthenticating = false;
     }
   }
 }

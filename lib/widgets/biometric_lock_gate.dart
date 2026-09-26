@@ -19,14 +19,15 @@ class BiometricLockGate extends StatefulWidget {
 }
 
 class _BiometricLockGateState extends State<BiometricLockGate> with WidgetsBindingObserver {
-  bool _isLocked = true;
+  bool _isLocked = false;
   bool _isChecking = true;
+  DateTime? _backgroundedAt;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _checkBiometrics();
+    _checkInitialLock();
   }
 
   @override
@@ -37,12 +38,34 @@ class _BiometricLockGateState extends State<BiometricLockGate> with WidgetsBindi
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _checkBiometrics();
+    if (state == AppLifecycleState.paused) {
+      if (!_isLocked) {
+        _backgroundedAt = DateTime.now();
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      // Ignore lifecycle resume if a biometric prompt is already in progress
+      if (BiometricService.instance.isAuthenticating) {
+        return;
+      }
+
+      // If user was already unlocked, enforce a grace period (e.g. 45 seconds in background)
+      if (!_isLocked) {
+        if (_backgroundedAt != null) {
+          final elapsed = DateTime.now().difference(_backgroundedAt!).inSeconds;
+          if (elapsed < 45) {
+            // Transient switch or notification pull down: do not lock
+            return;
+          }
+        } else {
+          return;
+        }
+      }
+
+      _checkAndPromptLock();
     }
   }
 
-  Future<void> _checkBiometrics() async {
+  Future<void> _checkInitialLock() async {
     final enabled = await BiometricService.instance.isEnabled();
     if (!enabled) {
       if (mounted) {
@@ -69,6 +92,39 @@ class _BiometricLockGateState extends State<BiometricLockGate> with WidgetsBindi
       setState(() {
         _isLocked = !success;
         _isChecking = false;
+        _backgroundedAt = null;
+      });
+    }
+  }
+
+  Future<void> _checkAndPromptLock() async {
+    final enabled = await BiometricService.instance.isEnabled();
+    if (!enabled) {
+      if (mounted) {
+        setState(() {
+          _isLocked = false;
+          _isChecking = false;
+        });
+      }
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLocked = true;
+        _isChecking = true;
+      });
+    }
+
+    final success = await BiometricService.instance.authenticate(
+      reason: 'Desbloquee para acceder a su cuenta Luxeva',
+    );
+
+    if (mounted) {
+      setState(() {
+        _isLocked = !success;
+        _isChecking = false;
+        _backgroundedAt = null;
       });
     }
   }
@@ -151,7 +207,7 @@ class _BiometricLockGateState extends State<BiometricLockGate> with WidgetsBindi
                     padding: EdgeInsets.zero,
                     onPressed: () {
                       HapticFeedback.lightImpact();
-                      _checkBiometrics();
+                      _checkAndPromptLock();
                     },
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
