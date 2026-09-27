@@ -5,6 +5,7 @@ import 'models/user.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_tab_scaffold.dart';
 import 'services/auth_service.dart';
+import 'services/developer_service.dart';
 import 'widgets/biometric_lock_gate.dart';
 
 void main() async {
