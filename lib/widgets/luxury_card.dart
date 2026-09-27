@@ -17,7 +17,7 @@ class LuxuryCardWidget extends StatelessWidget {
       height: 200,
       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(LuxevaTheme.continuousRadius),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -30,7 +30,7 @@ class LuxuryCardWidget extends StatelessWidget {
         ),
         border: Border.all(
           color: LuxevaTheme.borderGold,
-          width: 1.2,
+          width: LuxevaTheme.hairline,
         ),
         boxShadow: const [
           BoxShadow(

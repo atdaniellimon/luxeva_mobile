@@ -26,8 +26,9 @@ void main() async {
     ),
   );
 
-  // Initialize cached session from SharedPreferences
+  // Initialize cached session and developer sandbox from SharedPreferences
   await AuthService.instance.init();
+  await DeveloperService.instance.init();
 
   runApp(const LuxevaApp());
 }

@@ -4,6 +4,7 @@ import '../config/theme.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/developer_service.dart';
 import '../widgets/dynamic_notice.dart';
 import '../widgets/glass_panel.dart';
 
@@ -101,7 +102,7 @@ class _TransferScreenState extends State<TransferScreen> {
             title: const Text('Transferencia Enviada', style: TextStyle(fontWeight: FontWeight.w700)),
             content: Padding(
               padding: const EdgeInsets.only(top: 8.0),
-              child: Text('Se enviaron \$${amount.toStringAsFixed(2)} MXN a $to.'),
+              child: Text('Se enviaron \$${amount.toStringAsFixed(2)} MXN a $to exitosamente.'),
             ),
             actions: [
               CupertinoDialogAction(
@@ -124,35 +125,58 @@ class _TransferScreenState extends State<TransferScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDev = DeveloperService.instance.isDeveloperMode.value;
+
     return CupertinoPageScaffold(
       backgroundColor: LuxevaTheme.obsidianBg,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: LuxevaTheme.glassBg,
-        middle: const Text('Transferir', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        border: const Border(
+          bottom: BorderSide(
+            color: LuxevaTheme.borderSubtle,
+            width: LuxevaTheme.hairline,
+          ),
+        ),
+        middle: const Text(
+          'TRANSFERIR',
+          style: TextStyle(
+            fontFamily: 'Georgia',
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 2.0,
+            color: LuxevaTheme.textPrimary,
+          ),
+        ),
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
-          child: const Icon(CupertinoIcons.chevron_left, color: LuxevaTheme.textPrimary),
+          child: const Icon(CupertinoIcons.chevron_left, color: LuxevaTheme.textPrimary, size: 22),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       child: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           children: [
-            // Available Balance Card
-            GlassPanel(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            // Available Balance Header (Apple HIG Optical typography)
+            Center(
+              child: Column(
                 children: [
                   const Text(
-                    'Saldo disponible',
-                    style: TextStyle(fontSize: 13, color: LuxevaTheme.textSecondary),
+                    'SALDO DISPONIBLE PARA TRANSFERIR',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.8,
+                      color: LuxevaTheme.textSecondary,
+                    ),
                   ),
+                  const SizedBox(height: 6),
                   Text(
                     widget.user.formattedBalance,
                     style: const TextStyle(
-                      fontSize: 18,
+                      fontFamily: 'Georgia',
+                      fontSize: 28,
                       fontWeight: FontWeight.w700,
                       color: LuxevaTheme.goldLight,
                     ),
@@ -160,11 +184,71 @@ class _TransferScreenState extends State<TransferScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
 
-            GlassPanel(
-              hasGoldBorder: true,
+            // Sandbox Member Quick Chips
+            if (isDev) ...[
+              const Text(
+                'DESTINATARIOS SANDBOX (CONEXIÓN DIRECTA)',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.4,
+                  color: LuxevaTheme.amberSandbox,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  children: DeveloperService.sandboxMembers
+                      .where((m) => m.accountNumber != widget.user.accountNumber)
+                      .map((member) => Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: GestureDetector(
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                _toController.text = member.accountNumber;
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0x18FF9F0A),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0x50FF9F0A), width: 0.5),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(CupertinoIcons.person_fill, size: 12, color: LuxevaTheme.amberSandbox),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${member.fullName} (${member.accountNumber})',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: LuxevaTheme.amberSandbox,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ))
+                      .toList(),
+                ),
+              ),
+              const SizedBox(height: 18),
+            ],
+
+            // Transfer Form Group
+            Container(
               padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: LuxevaTheme.surfaceLayer,
+                borderRadius: BorderRadius.circular(LuxevaTheme.continuousRadius),
+                border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -180,24 +264,24 @@ class _TransferScreenState extends State<TransferScreen> {
                   const SizedBox(height: 8),
                   Container(
                     decoration: BoxDecoration(
-                      color: LuxevaTheme.cardElevated,
+                      color: LuxevaTheme.surfaceElevated,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: LuxevaTheme.borderGold.withOpacity(0.35), width: 0.8),
+                      border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
                     ),
                     child: CupertinoTextField(
                       controller: _toController,
-                      placeholder: 'CLABE interbancaria (18 dígitos)',
-                      placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 14),
+                      placeholder: 'CLABE (18 dígitos) o Cuenta Luxeva',
+                      placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 13),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
                       prefix: const Padding(
                         padding: EdgeInsets.only(left: 14),
                         child: Icon(CupertinoIcons.creditcard, size: 18, color: LuxevaTheme.goldAccent),
                       ),
                       decoration: null,
-                      style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 15),
+                      style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 14),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 20),
 
                   const Text(
                     'MONTO A TRANSFERIR (MXN)',
@@ -211,28 +295,38 @@ class _TransferScreenState extends State<TransferScreen> {
                   const SizedBox(height: 8),
                   Container(
                     decoration: BoxDecoration(
-                      color: LuxevaTheme.cardElevated,
+                      color: LuxevaTheme.surfaceElevated,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: LuxevaTheme.borderGold.withOpacity(0.35), width: 0.8),
+                      border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
                     ),
                     child: CupertinoTextField(
                       controller: _amountController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       prefix: const Padding(
-                        padding: EdgeInsets.only(left: 14.0),
+                        padding: EdgeInsets.only(left: 16.0),
                         child: Text(
                           '\$',
-                          style: TextStyle(fontSize: 20, color: LuxevaTheme.goldAccent, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            fontFamily: 'Georgia',
+                            fontSize: 22,
+                            color: LuxevaTheme.goldAccent,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                       placeholder: '0.00',
-                      placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 18),
+                      placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 22),
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
                       decoration: null,
-                      style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 20, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        fontFamily: 'Georgia',
+                        color: LuxevaTheme.textPrimary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 20),
 
                   const Text(
                     'CONCEPTO (OPCIONAL)',
@@ -246,14 +340,14 @@ class _TransferScreenState extends State<TransferScreen> {
                   const SizedBox(height: 8),
                   Container(
                     decoration: BoxDecoration(
-                      color: LuxevaTheme.cardElevated,
+                      color: LuxevaTheme.surfaceElevated,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: LuxevaTheme.borderGold.withOpacity(0.35), width: 0.8),
+                      border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
                     ),
                     child: CupertinoTextField(
                       controller: _conceptController,
-                      placeholder: 'Ej. Renta, comida, servicio...',
-                      placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 14),
+                      placeholder: 'Ej. Gastos de representación, membresía...',
+                      placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 13),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
                       prefix: const Padding(
                         padding: EdgeInsets.only(left: 14),
@@ -263,20 +357,28 @@ class _TransferScreenState extends State<TransferScreen> {
                       style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 14),
                     ),
                   ),
-                  const SizedBox(height: 26),
+                  const SizedBox(height: 28),
 
+                  // Send Transfer Button (Apple HIG Primary Control)
                   GestureDetector(
                     onTap: _isSending ? null : _handleSendTransfer,
                     child: Container(
                       width: double.infinity,
-                      height: 52,
+                      height: 50,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [LuxevaTheme.goldLight, LuxevaTheme.goldAccent, LuxevaTheme.goldDark],
+                          colors: [LuxevaTheme.goldLight, LuxevaTheme.goldAccent],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x33000000),
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Center(
                         child: _isSending
@@ -286,8 +388,8 @@ class _TransferScreenState extends State<TransferScreen> {
                                 style: TextStyle(
                                   color: LuxevaTheme.obsidianBg,
                                   fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.8,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                       ),

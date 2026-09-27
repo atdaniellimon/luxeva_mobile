@@ -9,15 +9,21 @@ class GlassPanel extends StatelessWidget {
   final double borderRadius;
   final bool hasGoldBorder;
   final Color? borderColor;
+  final Color? backgroundColor;
+  final double blurSigma;
+  final double borderWidth;
 
   const GlassPanel({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(18),
     this.margin = EdgeInsets.zero,
-    this.borderRadius = 22,
+    this.borderRadius = LuxevaTheme.continuousRadius,
     this.hasGoldBorder = false,
     this.borderColor,
+    this.backgroundColor,
+    this.blurSigma = LuxevaTheme.liquidBlur,
+    this.borderWidth = LuxevaTheme.hairline,
   });
 
   @override
@@ -27,21 +33,21 @@ class GlassPanel extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(borderRadius),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          filter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              color: LuxevaTheme.glassBg,
+              color: backgroundColor ?? LuxevaTheme.glassBg,
               borderRadius: BorderRadius.circular(borderRadius),
               border: Border.all(
                 color: borderColor ?? (hasGoldBorder ? LuxevaTheme.borderGold : LuxevaTheme.borderSubtle),
-                width: 1,
+                width: borderWidth,
               ),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x66000000),
-                  blurRadius: 24,
-                  offset: Offset(0, 10),
+                  color: Color(0x33000000),
+                  blurRadius: 20,
+                  offset: Offset(0, 8),
                 ),
               ],
             ),

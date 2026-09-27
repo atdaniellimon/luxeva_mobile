@@ -349,7 +349,81 @@ class _AccountScreenState extends State<AccountScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 34),
+            const SizedBox(height: 20),
+
+            // Developer & Sandbox Mode
+            const Text(
+              'DESARROLLO Y ENTORNO',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: LuxevaTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ValueListenableBuilder<bool>(
+              valueListenable: DeveloperService.instance.isDeveloperMode,
+              builder: (context, isDev, _) {
+                return GlassPanel(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(CupertinoIcons.wrench, size: 20, color: LuxevaTheme.amberSandbox),
+                              SizedBox(width: 12),
+                              Text(
+                                'Modo Developer (Sandbox)',
+                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LuxevaTheme.textPrimary),
+                              ),
+                            ],
+                          ),
+                          CupertinoSwitch(
+                            value: isDev,
+                            activeColor: LuxevaTheme.amberSandbox,
+                            onChanged: (val) {
+                              HapticFeedback.selectionClick();
+                              DeveloperService.instance.setDeveloperMode(val);
+                              DynamicNotice.show(
+                                context,
+                                message: val ? 'Sandbox Activado' : 'Sandbox Desactivado',
+                                subtitle: val ? 'Prueba transferencias y faucet libremente' : 'Retornaste a producción',
+                                icon: val ? CupertinoIcons.wrench_fill : CupertinoIcons.lock_fill,
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                      if (isDev) ...[
+                        Container(
+                          height: 0.5,
+                          margin: const EdgeInsets.symmetric(vertical: 12),
+                          color: const Color(0x18FFFFFF),
+                        ),
+                        GestureDetector(
+                          onTap: () => DeveloperConsoleModal.show(context, widget.user),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Abrir Consola Sandbox',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: LuxevaTheme.goldLight),
+                              ),
+                              Icon(CupertinoIcons.chevron_forward, size: 16, color: LuxevaTheme.goldAccent),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 30),
 
             // Logout Button
             SizedBox(
@@ -370,11 +444,27 @@ class _AccountScreenState extends State<AccountScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 18),
+
+            // Version info with discreet tap
+            Center(
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  DeveloperService.instance.toggleDeveloperMode();
+                },
+                child: const Text(
+                  'Luxeva Private Wealth • v2.0 (Build 13)',
+                  style: TextStyle(fontSize: 11, color: LuxevaTheme.textMuted),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
     );
+
   }
 
   Widget _buildProfileRow(String label, String value) {

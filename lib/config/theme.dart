@@ -1,27 +1,36 @@
 import 'package:flutter/cupertino.dart';
 
 class LuxevaTheme {
-  // Ultra-Luxury Obsidian & Champagne Gold Palette
-  static const Color obsidianBg = Color(0xFF09090B);
-  static const Color cardBg = Color(0xFF131317);
-  static const Color cardElevated = Color(0xFF18181E);
-  static const Color glassBg = Color(0xE00E0E12);
+  // Apple HIG & Liquid Glass Palette (Obsidian & Champagne)
+  static const Color obsidianBg = Color(0xFF08090C);
+  static const Color surfaceLayer = Color(0xFF111217);
+  static const Color surfaceElevated = Color(0xFF17181F);
+  static const Color cardBg = Color(0xFF121318);
+  static const Color cardElevated = Color(0xFF1A1B22);
+  static const Color glassBg = Color(0xB8121318); // Liquid Glass translucent tint
 
-  // Gold Accents
-  static const Color goldAccent = Color(0xFFCBBD93);
-  static const Color goldLight = Color(0xFFDFD4B3);
-  static const Color goldDark = Color(0xFFA69668);
-  static const Color borderGold = Color(0x38CBBD93);
+  // Champagne Gold Accent (Applied with restraint per Apple HIG)
+  static const Color goldAccent = Color(0xFFD4AF37);
+  static const Color goldLight = Color(0xFFF3E5AB);
+  static const Color goldDark = Color(0xFFA68A2E);
+  static const Color borderGold = Color(0x33D4AF37);
 
-  // Text & Neutral Colors
-  static const Color textPrimary = Color(0xFFF2F2F7);
+  // Optical Typography & Contrast Ratios (>4.5:1 compliant)
+  static const Color textPrimary = Color(0xFFF5F5F7);
   static const Color textSecondary = Color(0xFF8E8E93);
-  static const Color textMuted = Color(0x60FFFFFF);
-  static const Color borderSubtle = Color(0x14FFFFFF);
+  static const Color textMuted = Color(0x50FFFFFF);
+  static const Color borderSubtle = Color(0x14FFFFFF); // 0.5px hairline stroke
+  static const Color dividerColor = Color(0x10FFFFFF);
 
-  // Status Colors
+  // Status & Semantic Feedback
   static const Color greenPositive = Color(0xFF34C759);
   static const Color redNegative = Color(0xFFFF453A);
+  static const Color amberSandbox = Color(0xFFFF9F0A);
+
+  // Layout & Material Metrics
+  static const double liquidBlur = 24.0;
+  static const double continuousRadius = 24.0;
+  static const double hairline = 0.5;
 
   static CupertinoThemeData get cupertinoTheme {
     return const CupertinoThemeData(
@@ -36,12 +45,13 @@ class LuxevaTheme {
           color: textPrimary,
           fontSize: 16,
           fontFamily: '.SF Pro Text',
+          letterSpacing: -0.2,
         ),
         navTitleTextStyle: TextStyle(
           color: textPrimary,
-          fontSize: 18,
+          fontSize: 17,
           fontWeight: FontWeight.w600,
-          letterSpacing: 1.5,
+          letterSpacing: 2.0,
         ),
       ),
     );

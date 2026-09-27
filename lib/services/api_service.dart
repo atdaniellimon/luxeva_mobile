@@ -194,7 +194,26 @@ class ApiService {
     required double amount,
     required String concept,
   }) async {
-    final res = await _executeWithFallback(
+    // Intentar transferencia P2P bancaria atómica
+    try {
+      final res = await _executeWithFallback(
+        '/api/transfer/p2p',
+        method: 'POST',
+        body: {
+          'from_account': accountNumber,
+          'to_account': to,
+          'amount': amount,
+          'concept': concept.isNotEmpty ? concept : 'Transferencia Luxeva',
+        },
+      );
+
+      if (res.statusCode == 200) {
+        return;
+      }
+    } catch (_) {}
+
+    // Fallback de cargo de servicio en caso de modo offline o pasarela
+    final fallbackRes = await _executeWithFallback(
       '/api/service/charge',
       method: 'POST',
       body: {
@@ -205,12 +224,31 @@ class ApiService {
       },
     );
 
-    if (res.statusCode != 200) {
-      final data = _safeDecode(res);
+    if (fallbackRes.statusCode != 200) {
+      final data = _safeDecode(fallbackRes);
       final msg = (data is Map && data['detail'] != null)
           ? data['detail'].toString()
           : 'Fondos insuficientes para dispersión';
       throw Exception(msg);
     }
   }
+
+  Future<void> instantFund({
+    required String accountNumber,
+    required double amount,
+  }) async {
+    final res = await _executeWithFallback(
+      '/api/deposit/instant-fund?account_number=${Uri.encodeComponent(accountNumber)}&amount=$amount',
+      method: 'POST',
+    );
+
+    if (res.statusCode != 200) {
+      final data = _safeDecode(res);
+      final msg = (data is Map && data['detail'] != null)
+          ? data['detail'].toString()
+          : 'Error al procesar el fondeo instantáneo';
+      throw Exception(msg);
+    }
+  }
 }
+

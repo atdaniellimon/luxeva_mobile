@@ -413,7 +413,7 @@ class _DigitalCardScreenState extends State<DigitalCardScreen> {
       height: 215,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(LuxevaTheme.continuousRadius),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -423,7 +423,7 @@ class _DigitalCardScreenState extends State<DigitalCardScreen> {
         ),
         border: Border.all(
           color: _isFrozen ? LuxevaTheme.redNegative.withOpacity(0.5) : LuxevaTheme.borderGold,
-          width: 1.2,
+          width: LuxevaTheme.hairline,
         ),
         boxShadow: const [
           BoxShadow(
