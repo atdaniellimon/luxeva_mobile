@@ -274,28 +274,22 @@ class _CashWithdrawalModalState extends State<CashWithdrawalModal> {
                 width: _isCustom ? 1.0 : LuxevaTheme.hairline,
               ),
             ),
-            child: Row(
-              children: [
-                const Icon(CupertinoIcons.pencil, size: 16, color: LuxevaTheme.goldAccent),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _isCustom
-                      ? CupertinoTextField(
-                          controller: _customAmountController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          autofocus: true,
-                          placeholder: 'Escribe el monto en MXN',
-                          placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 14),
-                          style: LuxevaTheme.tabularFigures(fontSize: 16, color: LuxevaTheme.textPrimary),
-                          decoration: null,
-                        )
-                      : const Text(
-                          'Otro monto personalizado',
-                          style: TextStyle(fontSize: 14, color: LuxevaTheme.textSecondary),
-                        ),
-                ),
-              ],
-            ),
+            child: _isCustom
+                ? CupertinoTextField(
+                    controller: _customAmountController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    autofocus: true,
+                    placeholder: 'Escribe el monto en MXN',
+                    placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 14),
+                    style: LuxevaTheme.tabularFigures(fontSize: 16, color: LuxevaTheme.textPrimary),
+                    decoration: null,
+                  )
+                : const Center(
+                    child: Text(
+                      'Otro monto personalizado',
+                      style: TextStyle(fontSize: 13, color: LuxevaTheme.textSecondary),
+                    ),
+                  ),
           ),
         ),
         const SizedBox(height: 28),

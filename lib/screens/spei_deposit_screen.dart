@@ -187,27 +187,16 @@ class _SpeiDepositScreenState extends State<SpeiDepositScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'FICHA BANCARIA SPEI',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: LuxevaTheme.textSecondary),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: LuxevaTheme.greenPositive.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'LIQUIDACIÓN 24/7',
-                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: LuxevaTheme.greenPositive),
-                              ),
-                            ),
-                          ],
+                        const Text(
+                          'FICHA BANCARIA SPEI',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 1.5,
+                            color: LuxevaTheme.textSecondary,
+                          ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 18),
 
                         // CLABE hero with 1-tap copy
                         const Text(
@@ -267,7 +256,7 @@ class _SpeiDepositScreenState extends State<SpeiDepositScreen> {
 
                   // 2. Direct Deposit Simulator / Verification
                   const Text(
-                    'NOTIFICAR O ACREDITAR DEPÓSITO',
+                    'ACREDITAR DEPÓSITO',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -287,11 +276,6 @@ class _SpeiDepositScreenState extends State<SpeiDepositScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Si ya realizaste la transferencia desde tu banca electrónica, ingresa el monto transferido para validación y acreditación inmediata:',
-                          style: TextStyle(fontSize: 12, color: LuxevaTheme.textSecondary, height: 1.4),
-                        ),
-                        const SizedBox(height: 14),
 
                         CupertinoTextField(
                           controller: _amountController,

@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import '../config/theme.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
-import 'concierge_screen.dart';
 import 'digital_card_screen.dart';
+import 'documents_screen.dart';
 import 'home_vault_screen.dart';
 import 'wealth_screen.dart';
 
@@ -25,14 +25,6 @@ class _MainTabScaffoldState extends State<MainTabScaffold> {
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-
-  void _switchTab(int index) {
-    if (index >= 0 && index < 4) {
-      HapticFeedback.selectionClick();
-      _tabController.index = index;
-      setState(() => _currentIndex = index);
-    }
   }
 
   @override
@@ -78,9 +70,9 @@ class _MainTabScaffoldState extends State<MainTabScaffold> {
                 label: 'Patrimonio',
               ),
               BottomNavigationBarItem(
-                icon: Icon(CupertinoIcons.sparkles),
-                activeIcon: Icon(CupertinoIcons.sparkles),
-                label: 'Concierge',
+                icon: Icon(CupertinoIcons.doc_text),
+                activeIcon: Icon(CupertinoIcons.doc_text_fill),
+                label: 'Documentos',
               ),
             ],
           ),
@@ -91,14 +83,11 @@ class _MainTabScaffoldState extends State<MainTabScaffold> {
                   case 0:
                     return HomeVaultScreen(user: currentUser);
                   case 1:
-                    return DigitalCardScreen(
-                      user: currentUser,
-                      onOpenConcierge: () => _switchTab(3),
-                    );
+                    return DigitalCardScreen(user: currentUser);
                   case 2:
                     return WealthScreen(user: currentUser);
                   case 3:
-                    return ConciergeScreen(user: currentUser);
+                    return DocumentsScreen(user: currentUser);
                   default:
                     return HomeVaultScreen(user: currentUser);
                 }

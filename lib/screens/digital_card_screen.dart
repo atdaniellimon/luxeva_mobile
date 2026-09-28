@@ -10,12 +10,10 @@ import '../widgets/luxury_card.dart';
 
 class DigitalCardScreen extends StatefulWidget {
   final UserSession user;
-  final VoidCallback? onOpenConcierge;
 
   const DigitalCardScreen({
     super.key,
     required this.user,
-    this.onOpenConcierge,
   });
 
   @override
@@ -251,19 +249,9 @@ class _DigitalCardScreenState extends State<DigitalCardScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Pausar Tarjeta',
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LuxevaTheme.textPrimary),
-                                ),
-                                SizedBox(height: 2),
-                                Text(
-                                  'Bloquea preventivamente cargos y pagos',
-                                  style: TextStyle(fontSize: 11, color: LuxevaTheme.textSecondary),
-                                ),
-                              ],
+                            const Text(
+                              'Pausar Tarjeta',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LuxevaTheme.textPrimary),
                             ),
                             CupertinoSwitch(
                               value: _isFrozen,
@@ -275,7 +263,7 @@ class _DigitalCardScreenState extends State<DigitalCardScreen> {
                       ),
                       Container(height: LuxevaTheme.hairline, color: LuxevaTheme.dividerColor),
 
-                      // PIN Físico
+                      // PIN
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         child: Row(
@@ -285,7 +273,7 @@ class _DigitalCardScreenState extends State<DigitalCardScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'PIN de Tarjeta Física',
+                                  'PIN de Tarjeta',
                                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LuxevaTheme.textPrimary),
                                 ),
                                 const SizedBox(height: 2),
@@ -314,86 +302,27 @@ class _DigitalCardScreenState extends State<DigitalCardScreen> {
                       ),
                       Container(height: LuxevaTheme.hairline, color: LuxevaTheme.dividerColor),
 
-                      // Límite Operativo Asignado
+                      // Límite Diario
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Límite Operativo Asignado',
-                                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LuxevaTheme.textPrimary),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    _assignedLimitString(),
-                                    style: const TextStyle(fontSize: 11, color: LuxevaTheme.textSecondary),
-                                  ),
-                                ],
-                              ),
+                            const Text(
+                              'Límite Diario',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LuxevaTheme.textPrimary),
                             ),
-                            CupertinoButton(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              color: const Color(0x18CBBD93),
-                              borderRadius: BorderRadius.circular(8),
-                              onPressed: () {
-                                HapticFeedback.lightImpact();
-                                if (widget.onOpenConcierge != null) {
-                                  widget.onOpenConcierge!();
-                                } else {
-                                  DynamicNotice.show(
-                                    context,
-                                    message: 'Solicitud enviada a Concierge',
-                                    subtitle: 'Tu banquero privado evaluará la ampliación de tu límite.',
-                                    icon: CupertinoIcons.sparkles,
-                                  );
-                                }
-                              },
-                              child: const Text(
-                                'Ajustar',
-                                style: TextStyle(fontSize: 12, color: LuxevaTheme.goldLight, fontWeight: FontWeight.w600),
+                            Text(
+                              _assignedLimitString(),
+                              style: LuxevaTheme.tabularFigures(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: LuxevaTheme.goldLight,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 28),
-
-                // 4. Technical Specs
-                const Text(
-                  'ESPECIFICACIONES DEL INSTRUMENTO',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.5,
-                    color: LuxevaTheme.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: LuxevaTheme.surfaceLayer,
-                    borderRadius: BorderRadius.circular(LuxevaTheme.radiusStandard),
-                    border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
-                  ),
-                  child: const Column(
-                    children: [
-                      _SpecRow(label: 'Red Bancaria', value: 'Red Privada LXC-PAN'),
-                      SizedBox(height: 10),
-                      _SpecRow(label: 'BIN Emisor', value: '8840 (ISO/IEC 7812)'),
-                      SizedBox(height: 10),
-                      _SpecRow(label: 'Composición', value: 'Titanio Macizo Grado Aeroespacial'),
-                      SizedBox(height: 10),
-                      _SpecRow(label: 'Criptografía', value: 'EMV Chip • Secure Enclave'),
                     ],
                   ),
                 ),
@@ -403,24 +332,6 @@ class _DigitalCardScreenState extends State<DigitalCardScreen> {
           },
         ),
       ),
-    );
-  }
-}
-
-class _SpecRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _SpecRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: LuxevaTheme.textSecondary)),
-        Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: LuxevaTheme.textPrimary)),
-      ],
     );
   }
 }

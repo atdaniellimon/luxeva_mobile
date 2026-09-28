@@ -70,8 +70,8 @@ class NotificationService {
         notifications.value = [
           LuxevaNotification(
             id: 'init_welcome',
-            title: 'Bóveda Luxeva Activa',
-            message: 'Tu sesión bancaria institucional está protegida con Secure Enclave y STP Rail 24/7.',
+            title: 'Bóveda Luxeva',
+            message: 'Sesión protegida con Secure Enclave.',
             timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
             type: 'security',
             isRead: false,

@@ -292,14 +292,7 @@ class _AccountScreenState extends State<AccountScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Face ID / Biometría', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LuxevaTheme.textPrimary)),
-                                SizedBox(height: 2),
-                                Text('Protección para abrir la app y confirmar transferencias', style: TextStyle(fontSize: 11, color: LuxevaTheme.textSecondary)),
-                              ],
-                            ),
+                            const Text('Face ID / Biometría', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: LuxevaTheme.textPrimary)),
                             CupertinoSwitch(
                               value: _biometricsEnabled,
                               activeColor: LuxevaTheme.goldAccent,
@@ -417,18 +410,9 @@ class _AccountScreenState extends State<AccountScreen> {
                 Center(
                   child: GestureDetector(
                     onTap: _handleSecretTap,
-                    child: Column(
-                      children: const [
-                        Text(
-                          'LUXEVA PRIVATE BANKING • BUILD 2026.09',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1.2, color: LuxevaTheme.textMuted),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Secure Enclave • STP Rail Activo',
-                          style: TextStyle(fontSize: 10, color: LuxevaTheme.textMuted),
-                        ),
-                      ],
+                    child: const Text(
+                      'LUXEVA PRIVATE BANKING • BUILD 2026.09',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1.2, color: LuxevaTheme.textMuted),
                     ),
                   ),
                 ),
