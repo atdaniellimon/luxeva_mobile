@@ -7,14 +7,12 @@ import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/developer_service.dart';
+import '../widgets/cash_withdrawal_modal.dart';
 import '../widgets/developer_console_modal.dart';
 import '../widgets/dynamic_notice.dart';
-import '../widgets/glass_panel.dart';
-import '../widgets/luxury_card.dart';
+import '../widgets/notifications_sheet.dart';
 import 'account_screen.dart';
-import 'digital_card_screen.dart';
 import 'spei_deposit_screen.dart';
-import 'transactions_screen.dart';
 import 'transfer_screen.dart';
 
 class HomeVaultScreen extends StatefulWidget {
@@ -43,13 +41,21 @@ class _HomeVaultScreenState extends State<HomeVaultScreen> {
       final txs = await ApiService.instance.getTransactions(widget.user.accountNumber);
       if (mounted) {
         setState(() {
-          _recentTransactions = txs.take(5).toList();
+          _recentTransactions = txs.take(6).toList();
           _isLoadingTxs = false;
         });
       }
     } catch (_) {
       if (mounted) setState(() => _isLoadingTxs = false);
     }
+  }
+
+  Future<void> _handleRefresh() async {
+    HapticFeedback.lightImpact();
+    await Future.wait([
+      AuthService.instance.refreshBalance(),
+      _fetchRecentTransactions(),
+    ]);
   }
 
   void _handleSecretDevTap() {
@@ -182,248 +188,224 @@ class _HomeVaultScreenState extends State<HomeVaultScreen> {
                     CupertinoButton(
                       padding: EdgeInsets.zero,
                       child: const Icon(CupertinoIcons.bell, size: 20, color: LuxevaTheme.textPrimary),
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.of(context).push(
-                          CupertinoPageRoute(builder: (_) => TransactionsScreen(user: currentUser)),
-                        );
-                      },
+                      onPressed: () => NotificationsSheet.show(context),
                     ),
                   ],
                 ),
               ),
               child: SafeArea(
-                child: ListView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-                  children: [
-                    // Available Balance (Apple HIG Optical Typography)
-                    Center(
-                      child: Column(
-                        children: [
-                          const Text(
-                            'SALDO DISPONIBLE',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 2.2,
-                              color: LuxevaTheme.textSecondary,
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                  slivers: [
+                    CupertinoSliverRefreshControl(
+                      onRefresh: _handleRefresh,
+                    ),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // 1. Available Balance (Optical Typography with Tabular Figures)
+                            const Text(
+                              'SALDO DISPONIBLE EN BÓVEDA',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 2.0,
+                                color: LuxevaTheme.textSecondary,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            currentUser.formattedBalance,
-                            style: const TextStyle(
-                              fontFamily: 'Georgia',
-                              fontSize: 36,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.5,
-                              color: LuxevaTheme.textPrimary,
+                            const SizedBox(height: 6),
+                            Text(
+                              currentUser.formattedBalance,
+                              style: LuxevaTheme.tabularFigures(
+                                fontFamily: 'Georgia',
+                                fontSize: 38,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.5,
+                                color: LuxevaTheme.textPrimary,
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 22),
+                            const SizedBox(height: 24),
 
-                    // Physical Metal Card Widget (Apple Card Titanium Spec)
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        Navigator.of(context).push(
-                          CupertinoPageRoute(builder: (_) => DigitalCardScreen(user: currentUser)),
-                        );
-                      },
-                      child: LuxuryCardWidget(user: currentUser),
-                    ),
-                    const SizedBox(height: 26),
+                            // 2. Primary Operations Capsule Row (Apple Wallet Style)
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildOperationCapsule(
+                                    icon: CupertinoIcons.arrow_up_right,
+                                    label: 'Transferir',
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        CupertinoPageRoute(builder: (_) => TransferScreen(user: currentUser)),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _buildOperationCapsule(
+                                    icon: CupertinoIcons.plus,
+                                    label: 'Depositar',
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        CupertinoPageRoute(builder: (_) => SpeiDepositScreen(user: currentUser)),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _buildOperationCapsule(
+                                    icon: CupertinoIcons.money_dollar_circle,
+                                    label: 'Efectivo',
+                                    onTap: () {
+                                      CashWithdrawalModal.show(context, currentUser);
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 36),
 
-                    // Quick Actions Bar (Apple HIG 44x44 minimum touch targets)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildActionButton(
-                          icon: CupertinoIcons.arrow_up_right,
-                          label: 'Transferir',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              CupertinoPageRoute(builder: (_) => TransferScreen(user: currentUser)),
-                            );
-                          },
-                        ),
-                        _buildActionButton(
-                          icon: CupertinoIcons.plus,
-                          label: 'Depositar',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              CupertinoPageRoute(builder: (_) => SpeiDepositScreen(user: currentUser)),
-                            );
-                          },
-                        ),
-                        _buildActionButton(
-                          icon: CupertinoIcons.creditcard,
-                          label: 'Tarjeta',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              CupertinoPageRoute(builder: (_) => DigitalCardScreen(user: currentUser)),
-                            );
-                          },
-                        ),
-                        _buildActionButton(
-                          icon: CupertinoIcons.list_bullet,
-                          label: 'Historial',
-                          onTap: () {
-                            Navigator.of(context).push(
-                              CupertinoPageRoute(builder: (_) => TransactionsScreen(user: currentUser)),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-
-                    // Recent Operations Header
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'ÚLTIMOS MOVIMIENTOS',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.8,
-                            color: LuxevaTheme.textSecondary,
-                          ),
-                        ),
-                        CupertinoButton(
-                          padding: EdgeInsets.zero,
-                          child: const Text(
-                            'Ver todos',
-                            style: TextStyle(fontSize: 12, color: LuxevaTheme.goldAccent, fontWeight: FontWeight.w600),
-                          ),
-                          onPressed: () {
-                            HapticFeedback.lightImpact();
-                            Navigator.of(context).push(
-                              CupertinoPageRoute(builder: (_) => TransactionsScreen(user: currentUser)),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Recent Operations List (Apple Wallet grouped inset style)
-                    if (_isLoadingTxs)
-                      const Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: Center(child: CupertinoActivityIndicator(color: LuxevaTheme.goldAccent)),
-                      )
-                    else if (_recentTransactions.isEmpty)
-                      GlassPanel(
-                        padding: const EdgeInsets.symmetric(vertical: 36),
-                        child: const Center(
-                          child: Column(
-                            children: [
-                              Icon(CupertinoIcons.tray, size: 28, color: LuxevaTheme.goldAccent),
-                              SizedBox(height: 10),
-                              Text(
-                                'SIN MOVIMIENTOS REGISTRADOS',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 1.2,
+                            // 3. Recent Activity Section Header
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'ACTIVIDAD RECIENTE',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.6,
                                   color: LuxevaTheme.textSecondary,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      )
-                    else
-                      Container(
-                        decoration: BoxDecoration(
-                          color: LuxevaTheme.surfaceLayer,
-                          borderRadius: BorderRadius.circular(LuxevaTheme.continuousRadius),
-                          border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
-                        ),
-                        child: Column(
-                          children: _recentTransactions.asMap().entries.map((entry) {
-                            final idx = entry.key;
-                            final tx = entry.value;
-                            final isLast = idx == _recentTransactions.length - 1;
+                            ),
+                            const SizedBox(height: 12),
 
-                            return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  bottom: BorderSide(
-                                    color: isLast ? CupertinoColors.transparent : LuxevaTheme.borderSubtle,
-                                    width: LuxevaTheme.hairline,
+                            // 4. Activity List (Apple Wallet Grouped Inset)
+                            if (_isLoadingTxs)
+                              const Padding(
+                                padding: EdgeInsets.all(32.0),
+                                child: Center(child: CupertinoActivityIndicator(color: LuxevaTheme.goldAccent)),
+                              )
+                            else if (_recentTransactions.isEmpty)
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(vertical: 36),
+                                decoration: BoxDecoration(
+                                  color: LuxevaTheme.surfaceLayer,
+                                  borderRadius: BorderRadius.circular(LuxevaTheme.radiusStandard),
+                                  border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
+                                ),
+                                child: const Center(
+                                  child: Column(
+                                    children: [
+                                      Icon(CupertinoIcons.tray, size: 28, color: LuxevaTheme.textSecondary),
+                                      SizedBox(height: 10),
+                                      Text(
+                                        'SIN MOVIMIENTOS RECIENTES',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 1.2,
+                                          color: LuxevaTheme.textSecondary,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 36,
-                                    height: 36,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: tx.isPositive
-                                          ? LuxevaTheme.greenPositive.withOpacity(0.12)
-                                          : const Color(0x18FFFFFF),
-                                    ),
-                                    child: Icon(
-                                      tx.isPositive
-                                          ? CupertinoIcons.arrow_down_left
-                                          : CupertinoIcons.arrow_up_right,
-                                      size: 15,
-                                      color: tx.isPositive
-                                          ? LuxevaTheme.greenPositive
-                                          : LuxevaTheme.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 13),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          tx.description,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: LuxevaTheme.textPrimary,
+                              )
+                            else
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: LuxevaTheme.surfaceLayer,
+                                  borderRadius: BorderRadius.circular(LuxevaTheme.radiusStandard),
+                                  border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
+                                ),
+                                child: Column(
+                                  children: _recentTransactions.asMap().entries.map((entry) {
+                                    final idx = entry.key;
+                                    final tx = entry.value;
+                                    final isLast = idx == _recentTransactions.length - 1;
+
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          bottom: BorderSide(
+                                            color: isLast ? CupertinoColors.transparent : LuxevaTheme.dividerColor,
+                                            width: LuxevaTheme.hairline,
                                           ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          tx.createdAt,
-                                          style: const TextStyle(fontSize: 11, color: LuxevaTheme.textSecondary),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Text(
-                                    tx.formattedAmount,
-                                    style: TextStyle(
-                                      fontFamily: 'Georgia',
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: tx.isPositive
-                                          ? LuxevaTheme.greenPositive
-                                          : LuxevaTheme.textPrimary,
-                                    ),
-                                  ),
-                                ],
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 36,
+                                            height: 36,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: tx.isPositive
+                                                  ? LuxevaTheme.greenPositive.withOpacity(0.12)
+                                                  : const Color(0x18FFFFFF),
+                                            ),
+                                            child: Icon(
+                                              tx.isPositive
+                                                  ? CupertinoIcons.arrow_down_left
+                                                  : CupertinoIcons.arrow_up_right,
+                                              size: 15,
+                                              color: tx.isPositive
+                                                  ? LuxevaTheme.greenPositive
+                                                  : LuxevaTheme.textPrimary,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 14),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  tx.description,
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: LuxevaTheme.textPrimary,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  tx.createdAt,
+                                                  style: const TextStyle(fontSize: 11, color: LuxevaTheme.textSecondary),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Text(
+                                            tx.formattedAmount,
+                                            style: LuxevaTheme.tabularFigures(
+                                              fontFamily: 'Georgia',
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w700,
+                                              color: tx.isPositive
+                                                  ? LuxevaTheme.greenPositive
+                                                  : LuxevaTheme.textPrimary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
                               ),
-                            );
-                          }).toList(),
+                            const SizedBox(height: 32),
+                          ],
                         ),
                       ),
-                    const SizedBox(height: 36),
+                    ),
                   ],
                 ),
               ),
@@ -434,7 +416,7 @@ class _HomeVaultScreenState extends State<HomeVaultScreen> {
     );
   }
 
-  Widget _buildActionButton({
+  Widget _buildOperationCapsule({
     required IconData icon,
     required String label,
     required VoidCallback onTap,
@@ -444,36 +426,28 @@ class _HomeVaultScreenState extends State<HomeVaultScreen> {
         HapticFeedback.lightImpact();
         onTap();
       },
-      child: Column(
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: LuxevaTheme.surfaceElevated,
-              border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x30000000),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
-                ),
-              ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: LuxevaTheme.surfaceElevated,
+          borderRadius: BorderRadius.circular(LuxevaTheme.radiusStandard),
+          border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 20, color: LuxevaTheme.goldAccent),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+                color: LuxevaTheme.textPrimary,
+              ),
             ),
-            child: Icon(icon, size: 20, color: LuxevaTheme.goldAccent),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.3,
-              color: LuxevaTheme.textSecondary,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

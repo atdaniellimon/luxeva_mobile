@@ -3,9 +3,9 @@ import 'package:flutter/services.dart';
 import '../config/theme.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
-import 'account_screen.dart';
+import 'concierge_screen.dart';
+import 'digital_card_screen.dart';
 import 'home_vault_screen.dart';
-import 'transactions_screen.dart';
 import 'wealth_screen.dart';
 
 class MainTabScaffold extends StatefulWidget {
@@ -19,6 +19,21 @@ class MainTabScaffold extends StatefulWidget {
 
 class _MainTabScaffoldState extends State<MainTabScaffold> {
   int _currentIndex = 0;
+  final CupertinoTabController _tabController = CupertinoTabController();
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _switchTab(int index) {
+    if (index >= 0 && index < 4) {
+      HapticFeedback.selectionClick();
+      _tabController.index = index;
+      setState(() => _currentIndex = index);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +43,7 @@ class _MainTabScaffoldState extends State<MainTabScaffold> {
         final currentUser = sessionUser ?? widget.user;
 
         return CupertinoTabScaffold(
+          controller: _tabController,
           tabBar: CupertinoTabBar(
             currentIndex: _currentIndex,
             onTap: (index) {
@@ -39,32 +55,32 @@ class _MainTabScaffoldState extends State<MainTabScaffold> {
             backgroundColor: LuxevaTheme.glassBg,
             activeColor: LuxevaTheme.goldAccent,
             inactiveColor: LuxevaTheme.textSecondary,
-            border: Border(
+            border: const Border(
               top: BorderSide(
-                color: LuxevaTheme.borderGold.withOpacity(0.25),
-                width: 0.5,
+                color: LuxevaTheme.borderSubtle,
+                width: LuxevaTheme.hairline,
               ),
             ),
             items: const [
               BottomNavigationBarItem(
-                icon: Icon(CupertinoIcons.house),
-                activeIcon: Icon(CupertinoIcons.house_fill),
-                label: 'Inicio',
+                icon: Icon(CupertinoIcons.shield),
+                activeIcon: Icon(CupertinoIcons.shield_fill),
+                label: 'Bóveda',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(CupertinoIcons.creditcard),
+                activeIcon: Icon(CupertinoIcons.creditcard_fill),
+                label: 'Tarjeta',
               ),
               BottomNavigationBarItem(
                 icon: Icon(CupertinoIcons.chart_pie),
                 activeIcon: Icon(CupertinoIcons.chart_pie_fill),
-                label: 'Balance',
+                label: 'Patrimonio',
               ),
               BottomNavigationBarItem(
-                icon: Icon(CupertinoIcons.list_bullet),
-                activeIcon: Icon(CupertinoIcons.list_bullet),
-                label: 'Movimientos',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(CupertinoIcons.person),
-                activeIcon: Icon(CupertinoIcons.person_fill),
-                label: 'Perfil',
+                icon: Icon(CupertinoIcons.sparkles),
+                activeIcon: Icon(CupertinoIcons.sparkles),
+                label: 'Concierge',
               ),
             ],
           ),
@@ -75,11 +91,14 @@ class _MainTabScaffoldState extends State<MainTabScaffold> {
                   case 0:
                     return HomeVaultScreen(user: currentUser);
                   case 1:
-                    return WealthScreen(user: currentUser);
+                    return DigitalCardScreen(
+                      user: currentUser,
+                      onOpenConcierge: () => _switchTab(3),
+                    );
                   case 2:
-                    return TransactionsScreen(user: currentUser);
+                    return WealthScreen(user: currentUser);
                   case 3:
-                    return AccountScreen(user: currentUser);
+                    return ConciergeScreen(user: currentUser);
                   default:
                     return HomeVaultScreen(user: currentUser);
                 }

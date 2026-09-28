@@ -8,6 +8,8 @@ import 'services/auth_service.dart';
 import 'services/developer_service.dart';
 import 'widgets/biometric_lock_gate.dart';
 
+import 'services/notification_service.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -15,6 +17,9 @@ void main() async {
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
+
+  // Support modern iOS & Android 15/16 edge-to-edge UI
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // Set system navigation bar & status bar transparent for edge-to-edge obsidian UI
   SystemChrome.setSystemUIOverlayStyle(
@@ -27,9 +32,10 @@ void main() async {
     ),
   );
 
-  // Initialize cached session and developer sandbox from SharedPreferences
+  // Initialize cached session, developer sandbox, and offline notifications
   await AuthService.instance.init();
   await DeveloperService.instance.init();
+  await NotificationService.instance.init();
 
   runApp(const LuxevaApp());
 }

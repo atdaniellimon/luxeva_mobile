@@ -5,9 +5,8 @@ import '../models/spei_details.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
-import '../widgets/copy_chip.dart';
+import '../services/notification_service.dart';
 import '../widgets/dynamic_notice.dart';
-import '../widgets/glass_panel.dart';
 
 class SpeiDepositScreen extends StatefulWidget {
   final UserSession user;
@@ -50,12 +49,27 @@ class _SpeiDepositScreenState extends State<SpeiDepositScreen> {
     }
   }
 
+  void _copyToClipboard(String text, String label) {
+    HapticFeedback.lightImpact();
+    Clipboard.setData(ClipboardData(text: text));
+    DynamicNotice.show(
+      context,
+      message: '$label copiado al portapapeles',
+      icon: CupertinoIcons.doc_on_doc_fill,
+    );
+  }
+
   Future<void> _handleConfirmDeposit() async {
     final amountText = _amountController.text.trim();
     final amount = double.tryParse(amountText);
 
     if (amount == null || amount <= 0) {
-      _showAlert('Monto requerido', 'Ingresa una cantidad válida para depositar.');
+      DynamicNotice.show(
+        context,
+        message: 'Monto requerido',
+        subtitle: 'Ingresa una cantidad válida para fondear tu cuenta',
+        icon: CupertinoIcons.exclamationmark_circle,
+      );
       return;
     }
 
@@ -74,14 +88,21 @@ class _SpeiDepositScreenState extends State<SpeiDepositScreen> {
       await AuthService.instance.refreshBalance();
       HapticFeedback.heavyImpact();
 
+      // Register notification
+      NotificationService.instance.addNotification(
+        title: 'Depósito SPEI Acreditado',
+        message: '+\$${amount.toStringAsFixed(2)} MXN acreditado vía Banxico / STP.',
+        type: 'deposit',
+      );
+
       if (mounted) {
         showCupertinoDialog(
           context: context,
           builder: (ctx) => CupertinoAlertDialog(
-            title: const Text('Depósito acreditado', style: TextStyle(fontWeight: FontWeight.w700)),
+            title: const Text('Depósito Acreditado', style: TextStyle(fontWeight: FontWeight.w700)),
             content: Padding(
               padding: const EdgeInsets.only(top: 8.0),
-              child: Text('Se abonaron \$${amount.toStringAsFixed(2)} MXN a tu cuenta con éxito.'),
+              child: Text('Se abonaron \$${amount.toStringAsFixed(2)} MXN a tu bóveda con éxito.'),
             ),
             actions: [
               CupertinoDialogAction(
@@ -96,53 +117,55 @@ class _SpeiDepositScreenState extends State<SpeiDepositScreen> {
         );
       }
     } catch (e) {
-      _showAlert('Error', e.toString().replaceAll('Exception: ', ''));
+      DynamicNotice.show(
+        context,
+        message: 'Error de Fondeo',
+        subtitle: e.toString().replaceAll('Exception: ', ''),
+        icon: CupertinoIcons.xmark_circle,
+      );
     } finally {
       if (mounted) setState(() => _isDepositing = false);
     }
-  }
-
-  void _showAlert(String title, String message) {
-    showCupertinoDialog(
-      context: context,
-      builder: (ctx) => CupertinoAlertDialog(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-        content: Padding(
-          padding: const EdgeInsets.only(top: 8.0),
-          child: Text(message),
-        ),
-        actions: [
-          CupertinoDialogAction(
-            child: const Text('Entendido', style: TextStyle(color: LuxevaTheme.goldAccent)),
-            onPressed: () => Navigator.of(ctx).pop(),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     final instructions = _instructions ??
         SpeiInstructions(
-          bankName: 'Spin by OXXO',
+          bankName: 'Spin by OXXO / STP',
           clabe: '728969000044989306',
           beneficiary: 'Luxeva',
           concept: widget.user.accountNumber,
           accountNumber: widget.user.accountNumber,
         );
 
+    final clabeFormatted = instructions.clabe.length == 18
+        ? '${instructions.clabe.substring(0, 4)}  ${instructions.clabe.substring(4, 8)}  ${instructions.clabe.substring(8, 14)}  ${instructions.clabe.substring(14, 18)}'
+        : instructions.clabe;
+
     return CupertinoPageScaffold(
       backgroundColor: LuxevaTheme.obsidianBg,
       navigationBar: CupertinoNavigationBar(
         backgroundColor: LuxevaTheme.glassBg,
+        border: const Border(
+          bottom: BorderSide(
+            color: LuxevaTheme.borderSubtle,
+            width: LuxevaTheme.hairline,
+          ),
+        ),
         middle: const Text(
-          'Depositar fondos',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          'DEPOSITAR FONDOS',
+          style: TextStyle(
+            fontFamily: 'Georgia',
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 2.0,
+            color: LuxevaTheme.textPrimary,
+          ),
         ),
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
-          child: const Icon(CupertinoIcons.chevron_left, color: LuxevaTheme.textPrimary),
+          child: const Icon(CupertinoIcons.chevron_left, color: LuxevaTheme.textPrimary, size: 22),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -150,222 +173,201 @@ class _SpeiDepositScreenState extends State<SpeiDepositScreen> {
         child: _isLoadingInstructions
             ? const Center(child: CupertinoActivityIndicator(color: LuxevaTheme.goldAccent))
             : ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                 children: [
-                  // Transfer Instruction Card
-                  GlassPanel(
-                    hasGoldBorder: true,
-                    padding: const EdgeInsets.all(20),
+                  // 1. Institutional Bank Transfer Slip
+                  Container(
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      color: LuxevaTheme.surfaceLayer,
+                      borderRadius: BorderRadius.circular(LuxevaTheme.radiusStandard),
+                      border: Border.all(color: LuxevaTheme.borderGold, width: LuxevaTheme.hairline),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: LuxevaTheme.goldAccent.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(CupertinoIcons.arrow_down_to_line, size: 20, color: LuxevaTheme.goldAccent),
+                            const Text(
+                              'FICHA BANCARIA SPEI',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5, color: LuxevaTheme.textSecondary),
                             ),
-                            const SizedBox(width: 12),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Datos de Transferencia',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      color: LuxevaTheme.textPrimary,
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    'Transfiere a estos datos desde cualquier banco',
-                                    style: TextStyle(fontSize: 11, color: LuxevaTheme.textSecondary),
-                                  ),
-                                ],
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: LuxevaTheme.greenPositive.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'LIQUIDACIÓN 24/7',
+                                style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: LuxevaTheme.greenPositive),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 20),
 
-                        // CLABE
-                        _buildDataRow(
-                          label: 'CLABE interbancaria',
-                          value: instructions.formattedClabe,
-                          copyValue: instructions.clabe.replaceAll(' ', ''),
-                          isLarge: true,
+                        // CLABE hero with 1-tap copy
+                        const Text(
+                          'CLABE INTERBANCARIA',
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, letterSpacing: 1.2, color: LuxevaTheme.textSecondary),
                         ),
-                        Container(
-                          height: 0.5,
-                          margin: const EdgeInsets.symmetric(vertical: 12),
-                          color: const Color(0x18FFFFFF),
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () => _copyToClipboard(instructions.clabe, 'CLABE Interbancaria'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: LuxevaTheme.surfaceElevated,
+                              borderRadius: BorderRadius.circular(LuxevaTheme.radiusCompact),
+                              border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  clabeFormatted,
+                                  style: LuxevaTheme.tabularFigures(
+                                    fontSize: 15,
+                                    fontFamily: 'Courier',
+                                    fontWeight: FontWeight.w700,
+                                    color: LuxevaTheme.goldLight,
+                                  ),
+                                ),
+                                const Icon(CupertinoIcons.doc_on_doc, size: 16, color: LuxevaTheme.goldAccent),
+                              ],
+                            ),
+                          ),
                         ),
+                        const SizedBox(height: 18),
 
-                        // Bank
-                        _buildDataRow(
-                          label: 'Banco receptor',
+                        _DetailRow(
+                          label: 'Banco Receptor',
                           value: instructions.bankName,
-                          copyValue: instructions.bankName,
+                          onCopy: () => _copyToClipboard(instructions.bankName, 'Banco'),
                         ),
-                        Container(
-                          height: 0.5,
-                          margin: const EdgeInsets.symmetric(vertical: 12),
-                          color: const Color(0x18FFFFFF),
-                        ),
-
-                        // Beneficiary
-                        _buildDataRow(
+                        const SizedBox(height: 12),
+                        _DetailRow(
                           label: 'Beneficiario',
                           value: instructions.beneficiary,
-                          copyValue: instructions.beneficiary,
+                          onCopy: () => _copyToClipboard(instructions.beneficiary, 'Beneficiario'),
                         ),
-                        Container(
-                          height: 0.5,
-                          margin: const EdgeInsets.symmetric(vertical: 12),
-                          color: const Color(0x18FFFFFF),
-                        ),
-
-                        // Concept
-                        _buildDataRow(
-                          label: 'Concepto (Tu cuenta)',
+                        const SizedBox(height: 12),
+                        _DetailRow(
+                          label: 'Concepto / Referencia',
                           value: instructions.concept,
-                          copyValue: instructions.concept,
+                          onCopy: () => _copyToClipboard(instructions.concept, 'Concepto'),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
 
-                  // Quick test deposit simulator
-                  GlassPanel(
-                    padding: const EdgeInsets.all(20),
+                  // 2. Direct Deposit Simulator / Verification
+                  const Text(
+                    'NOTIFICAR O ACREDITAR DEPÓSITO',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.5,
+                      color: LuxevaTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: LuxevaTheme.surfaceLayer,
+                      borderRadius: BorderRadius.circular(LuxevaTheme.radiusStandard),
+                      border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Acreditar Saldo',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: LuxevaTheme.textPrimary,
-                          ),
+                          'Si ya realizaste la transferencia desde tu banca electrónica, ingresa el monto transferido para validación y acreditación inmediata:',
+                          style: TextStyle(fontSize: 12, color: LuxevaTheme.textSecondary, height: 1.4),
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'Ingresa el monto que transferiste para registrar el abono',
-                          style: TextStyle(fontSize: 12, color: LuxevaTheme.textSecondary),
+                        const SizedBox(height: 14),
+
+                        CupertinoTextField(
+                          controller: _amountController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          placeholder: 'Monto depositado en MXN (ej. 5000)',
+                          placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 13),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          style: LuxevaTheme.tabularFigures(fontSize: 15, color: LuxevaTheme.textPrimary),
+                          decoration: BoxDecoration(
+                            color: LuxevaTheme.surfaceElevated,
+                            borderRadius: BorderRadius.circular(LuxevaTheme.radiusCompact),
+                            border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
+                          ),
                         ),
                         const SizedBox(height: 16),
 
-                        // Amount Input
-                        Container(
-                          decoration: BoxDecoration(
-                            color: LuxevaTheme.cardElevated,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: LuxevaTheme.borderGold.withOpacity(0.35), width: 0.8),
-                          ),
-                          child: CupertinoTextField(
-                            controller: _amountController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                            placeholder: '0.00',
-                            placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 24, fontWeight: FontWeight.w600),
-                            prefix: const Padding(
-                              padding: EdgeInsets.only(left: 14.0),
-                              child: Text(
-                                '\$',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w700,
-                                  color: LuxevaTheme.goldAccent,
-                                ),
-                              ),
-                            ),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-                            decoration: null,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w700,
-                              color: LuxevaTheme.textPrimary,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Confirm Button
-                        GestureDetector(
-                          onTap: _isDepositing ? null : _handleConfirmDeposit,
-                          child: Container(
-                            width: double.infinity,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [LuxevaTheme.goldLight, LuxevaTheme.goldAccent, LuxevaTheme.goldDark],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Center(
-                              child: _isDepositing
-                                  ? const CupertinoActivityIndicator(color: LuxevaTheme.obsidianBg)
-                                  : const Text(
-                                      'Acreditar Saldo',
-                                      style: TextStyle(
-                                        color: LuxevaTheme.obsidianBg,
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.5,
-                                      ),
+                        CupertinoButton(
+                          color: LuxevaTheme.goldAccent,
+                          borderRadius: BorderRadius.circular(LuxevaTheme.radiusStandard),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          onPressed: _isDepositing ? null : _handleConfirmDeposit,
+                          child: Center(
+                            child: _isDepositing
+                                ? const CupertinoActivityIndicator(color: LuxevaTheme.obsidianBg)
+                                : const Text(
+                                    'Verificar y Abonar Fondos',
+                                    style: TextStyle(
+                                      fontFamily: 'Georgia',
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: LuxevaTheme.obsidianBg,
                                     ),
-                            ),
+                                  ),
                           ),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 32),
                 ],
               ),
       ),
     );
   }
+}
 
-  Widget _buildDataRow({
-    required String label,
-    required String value,
-    required String copyValue,
-    bool isLarge = false,
-  }) {
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final VoidCallback onCopy;
+
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    required this.onCopy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        Text(label, style: const TextStyle(fontSize: 12, color: LuxevaTheme.textSecondary)),
+        GestureDetector(
+          onTap: onCopy,
+          child: Row(
             children: [
               Text(
-                label,
-                style: const TextStyle(fontSize: 11, color: LuxevaTheme.textSecondary),
-              ),
-              const SizedBox(height: 3),
-              Text(
                 value,
-                style: TextStyle(
-                  fontSize: isLarge ? 16 : 14,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: isLarge ? 'Courier' : null,
-                  color: isLarge ? LuxevaTheme.goldLight : LuxevaTheme.textPrimary,
-                ),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: LuxevaTheme.textPrimary),
               ),
+              const SizedBox(width: 6),
+              const Icon(CupertinoIcons.doc_on_doc, size: 12, color: LuxevaTheme.textMuted),
             ],
           ),
         ),
-        CopyChip(textToCopy: copyValue),
       ],
     );
   }

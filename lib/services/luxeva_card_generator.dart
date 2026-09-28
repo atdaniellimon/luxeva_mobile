@@ -40,11 +40,13 @@ class LuxevaCardDetails {
 
 class AtmWithdrawalToken {
   final String code; // 6 digits
+  final double authorizedAmount;
   final DateTime expiresAt;
   final String qrPayload;
 
   AtmWithdrawalToken({
     required this.code,
+    required this.authorizedAmount,
     required this.expiresAt,
     required this.qrPayload,
   });
@@ -128,24 +130,27 @@ class LuxevaCardGenerator {
     await prefs.setDouble('lxc_card_limit_$accountNumber', limit);
   }
 
-  /// Generates a single-use 6-digit ATM Withdrawal Token valid for 15 minutes
-  static AtmWithdrawalToken generateAtmToken(String accountNumber) {
+  /// Generates a single-use 6-digit ATM Withdrawal Token valid for 15 minutes for a specified amount
+  static AtmWithdrawalToken generateAtmToken(String accountNumber, {double amount = 1000.0}) {
     final now = DateTime.now();
     final expiresAt = now.add(const Duration(minutes: 15));
     
     // 6-digit OTP
-    final randSeed = (now.millisecondsSinceEpoch + accountNumber.hashCode).abs();
+    final randSeed = (now.millisecondsSinceEpoch + accountNumber.hashCode + amount.toInt()).abs();
     final tokenCode = (randSeed % 900000 + 100000).toString();
 
     final payload = jsonEncode({
       'issuer': 'LUXEVA_ATM_NETWORK',
       'account': accountNumber,
       'token': tokenCode,
+      'amount': amount,
+      'currency': 'MXN',
       'exp': expiresAt.millisecondsSinceEpoch,
     });
 
     return AtmWithdrawalToken(
       code: tokenCode,
+      authorizedAmount: amount,
       expiresAt: expiresAt,
       qrPayload: payload,
     );

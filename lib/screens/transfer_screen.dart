@@ -5,8 +5,8 @@ import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/developer_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/dynamic_notice.dart';
-import '../widgets/glass_panel.dart';
 
 class TransferScreen extends StatefulWidget {
   final UserSession user;
@@ -60,17 +60,17 @@ class _TransferScreenState extends State<TransferScreen> {
     final amount = double.tryParse(amountText);
 
     if (to.isEmpty) {
-      _showAlert('Datos incompletos', 'Ingresa la CLABE o número de cuenta de destino.');
+      _showAlert('Destinatario requerido', 'Ingresa la CLABE (18 dígitos) o cuenta Luxeva.');
       return;
     }
 
     if (amount == null || amount <= 0) {
-      _showAlert('Monto inválido', 'Ingresa una cantidad válida para transferir.');
+      _showAlert('Monto requerido', 'Ingresa una cantidad válida para transferir.');
       return;
     }
 
     if (amount > widget.user.balance) {
-      _showAlert('Saldo insuficiente', 'El monto supera tu saldo disponible en cuenta.');
+      _showAlert('Saldo insuficiente', 'El monto supera el saldo disponible en tu bóveda.');
       return;
     }
 
@@ -82,16 +82,23 @@ class _TransferScreenState extends State<TransferScreen> {
         accountNumber: widget.user.accountNumber,
         to: to,
         amount: amount,
-        concept: concept.isNotEmpty ? concept : 'Transferencia',
+        concept: concept.isNotEmpty ? concept : 'Transferencia Luxeva',
       );
 
       await AuthService.instance.refreshBalance();
       HapticFeedback.heavyImpact();
 
+      // Register in offline notifications
+      NotificationService.instance.addNotification(
+        title: 'Transferencia Enviada',
+        message: '-\$${amount.toStringAsFixed(2)} MXN enviado a $to.',
+        type: 'transfer',
+      );
+
       if (mounted) {
         DynamicNotice.show(
           context,
-          message: 'Transferencia enviada',
+          message: 'Transferencia liquidada con éxito',
           subtitle: '-\$${amount.toStringAsFixed(2)} MXN a $to',
           icon: CupertinoIcons.arrow_up_right,
         );
@@ -99,10 +106,10 @@ class _TransferScreenState extends State<TransferScreen> {
         showCupertinoDialog(
           context: context,
           builder: (ctx) => CupertinoAlertDialog(
-            title: const Text('Transferencia Enviada', style: TextStyle(fontWeight: FontWeight.w700)),
+            title: const Text('Transferencia Liquidada', style: TextStyle(fontWeight: FontWeight.w700)),
             content: Padding(
               padding: const EdgeInsets.only(top: 8.0),
-              child: Text('Se enviaron \$${amount.toStringAsFixed(2)} MXN a $to exitosamente.'),
+              child: Text('Se transfirieron \$${amount.toStringAsFixed(2)} MXN a $to mediante liquidación STP inmediata.'),
             ),
             actions: [
               CupertinoDialogAction(
@@ -117,7 +124,7 @@ class _TransferScreenState extends State<TransferScreen> {
         );
       }
     } catch (e) {
-      _showAlert('Error al transferir', e.toString().replaceAll('Exception: ', ''));
+      _showAlert('Error de Liquidación', e.toString().replaceAll('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _isSending = false);
     }
@@ -156,14 +163,14 @@ class _TransferScreenState extends State<TransferScreen> {
       child: SafeArea(
         child: ListView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
           children: [
-            // Available Balance Header (Apple HIG Optical typography)
+            // 1. Hero Amount Input (Apple Cash Style)
             Center(
               child: Column(
                 children: [
                   const Text(
-                    'SALDO DISPONIBLE PARA TRANSFERIR',
+                    'SALDO DISPONIBLE',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
@@ -174,22 +181,64 @@ class _TransferScreenState extends State<TransferScreen> {
                   const SizedBox(height: 6),
                   Text(
                     widget.user.formattedBalance,
-                    style: const TextStyle(
+                    style: LuxevaTheme.tabularFigures(
                       fontFamily: 'Georgia',
-                      fontSize: 28,
+                      fontSize: 26,
                       fontWeight: FontWeight.w700,
                       color: LuxevaTheme.goldLight,
                     ),
                   ),
+                  const SizedBox(height: 28),
+
+                  // Large Minimal Amount Field
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.baseline,
+                    textBaseline: TextBaseline.alphabetic,
+                    children: [
+                      const Text(
+                        '\$',
+                        style: TextStyle(
+                          fontFamily: 'Georgia',
+                          fontSize: 36,
+                          fontWeight: FontWeight.w700,
+                          color: LuxevaTheme.goldAccent,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      IntrinsicWidth(
+                        child: CupertinoTextField(
+                          controller: _amountController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          autofocus: true,
+                          textAlign: TextAlign.center,
+                          placeholder: '0.00',
+                          placeholderStyle: const TextStyle(
+                            fontFamily: 'Georgia',
+                            fontSize: 44,
+                            fontWeight: FontWeight.w700,
+                            color: LuxevaTheme.textMuted,
+                          ),
+                          style: LuxevaTheme.tabularFigures(
+                            fontFamily: 'Georgia',
+                            fontSize: 44,
+                            fontWeight: FontWeight.w700,
+                            color: LuxevaTheme.textPrimary,
+                          ),
+                          decoration: null,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
 
-            // Sandbox Member Quick Chips
+            // 2. Sandbox Contacts (Quiet Luxury Chips)
             if (isDev) ...[
               const Text(
-                'DESTINATARIOS SANDBOX (CONEXIÓN DIRECTA)',
+                'DESTINATARIOS FRECUENTES (SANDBOX)',
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -197,7 +246,7 @@ class _TransferScreenState extends State<TransferScreen> {
                   color: LuxevaTheme.amberSandbox,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
@@ -208,26 +257,36 @@ class _TransferScreenState extends State<TransferScreen> {
                             padding: const EdgeInsets.only(right: 8.0),
                             child: GestureDetector(
                               onTap: () {
-                                HapticFeedback.lightImpact();
+                                HapticFeedback.selectionClick();
                                 _toController.text = member.accountNumber;
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: const Color(0x18FF9F0A),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: const Color(0x50FF9F0A), width: 0.5),
+                                  color: LuxevaTheme.surfaceElevated,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(CupertinoIcons.person_fill, size: 12, color: LuxevaTheme.amberSandbox),
-                                    const SizedBox(width: 6),
+                                    Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: LuxevaTheme.amberSandbox.withOpacity(0.18),
+                                      ),
+                                      child: const Center(
+                                        child: Icon(CupertinoIcons.person_fill, size: 10, color: LuxevaTheme.amberSandbox),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
                                     Text(
-                                      '${member.fullName} (${member.accountNumber})',
+                                      member.fullName,
                                       style: const TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 12,
                                         fontWeight: FontWeight.w600,
-                                        color: LuxevaTheme.amberSandbox,
+                                        color: LuxevaTheme.textPrimary,
                                       ),
                                     ),
                                   ],
@@ -238,164 +297,84 @@ class _TransferScreenState extends State<TransferScreen> {
                       .toList(),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 24),
             ],
 
-            // Transfer Form Group
+            // 3. Form Grouped Inset
+            const Text(
+              'DATOS DEL DESTINATARIO',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.5,
+                color: LuxevaTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 10),
+
             Container(
-              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: LuxevaTheme.surfaceLayer,
-                borderRadius: BorderRadius.circular(LuxevaTheme.continuousRadius),
+                borderRadius: BorderRadius.circular(LuxevaTheme.radiusStandard),
                 border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'DESTINATARIO (CLABE O CUENTA)',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5,
-                      color: LuxevaTheme.textSecondary,
+                  CupertinoTextField(
+                    controller: _toController,
+                    placeholder: 'CLABE (18 dígitos) o Cuenta Luxeva (LX-...)',
+                    placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 13),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    prefix: const Padding(
+                      padding: EdgeInsets.only(left: 16),
+                      child: Icon(CupertinoIcons.person_crop_circle, size: 20, color: LuxevaTheme.goldAccent),
                     ),
+                    style: const TextStyle(fontSize: 14, color: LuxevaTheme.textPrimary),
+                    decoration: null,
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: LuxevaTheme.surfaceElevated,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
+                  Container(height: LuxevaTheme.hairline, color: LuxevaTheme.dividerColor),
+                  CupertinoTextField(
+                    controller: _conceptController,
+                    placeholder: 'Concepto de pago (Opcional)',
+                    placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 13),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    prefix: const Padding(
+                      padding: EdgeInsets.only(left: 16),
+                      child: Icon(CupertinoIcons.text_quote, size: 20, color: LuxevaTheme.textSecondary),
                     ),
-                    child: CupertinoTextField(
-                      controller: _toController,
-                      placeholder: 'CLABE (18 dígitos) o Cuenta Luxeva',
-                      placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 13),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                      prefix: const Padding(
-                        padding: EdgeInsets.only(left: 14),
-                        child: Icon(CupertinoIcons.creditcard, size: 18, color: LuxevaTheme.goldAccent),
-                      ),
-                      decoration: null,
-                      style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 14),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  const Text(
-                    'MONTO A TRANSFERIR (MXN)',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5,
-                      color: LuxevaTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: LuxevaTheme.surfaceElevated,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
-                    ),
-                    child: CupertinoTextField(
-                      controller: _amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      prefix: const Padding(
-                        padding: EdgeInsets.only(left: 16.0),
-                        child: Text(
-                          '\$',
-                          style: TextStyle(
-                            fontFamily: 'Georgia',
-                            fontSize: 22,
-                            color: LuxevaTheme.goldAccent,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      placeholder: '0.00',
-                      placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 22),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-                      decoration: null,
-                      style: const TextStyle(
-                        fontFamily: 'Georgia',
-                        color: LuxevaTheme.textPrimary,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  const Text(
-                    'CONCEPTO (OPCIONAL)',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.5,
-                      color: LuxevaTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: LuxevaTheme.surfaceElevated,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: LuxevaTheme.borderSubtle, width: LuxevaTheme.hairline),
-                    ),
-                    child: CupertinoTextField(
-                      controller: _conceptController,
-                      placeholder: 'Ej. Gastos de representación, membresía...',
-                      placeholderStyle: const TextStyle(color: LuxevaTheme.textMuted, fontSize: 13),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                      prefix: const Padding(
-                        padding: EdgeInsets.only(left: 14),
-                        child: Icon(CupertinoIcons.text_quote, size: 18, color: LuxevaTheme.goldAccent),
-                      ),
-                      decoration: null,
-                      style: const TextStyle(color: LuxevaTheme.textPrimary, fontSize: 14),
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-
-                  // Send Transfer Button (Apple HIG Primary Control)
-                  GestureDetector(
-                    onTap: _isSending ? null : _handleSendTransfer,
-                    child: Container(
-                      width: double.infinity,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [LuxevaTheme.goldLight, LuxevaTheme.goldAccent],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x33000000),
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: _isSending
-                            ? const CupertinoActivityIndicator(color: LuxevaTheme.obsidianBg)
-                            : const Text(
-                                'Enviar Transferencia',
-                                style: TextStyle(
-                                  color: LuxevaTheme.obsidianBg,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                      ),
-                    ),
+                    style: const TextStyle(fontSize: 14, color: LuxevaTheme.textPrimary),
+                    decoration: null,
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 36),
+
+            // 4. Primary Send Button
+            CupertinoButton(
+              color: LuxevaTheme.goldAccent,
+              borderRadius: BorderRadius.circular(LuxevaTheme.radiusStandard),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              onPressed: _isSending ? null : _handleSendTransfer,
+              child: _isSending
+                  ? const CupertinoActivityIndicator(color: LuxevaTheme.obsidianBg)
+                  : const Text(
+                      'Confirmar Transferencia',
+                      style: TextStyle(
+                        fontFamily: 'Georgia',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: LuxevaTheme.obsidianBg,
+                      ),
+                    ),
+            ),
+            const SizedBox(height: 14),
+
+            const Center(
+              child: Text(
+                'Liquidación inmediata vía Sistema de Pagos Electrónicos Interbancarios (SPEI).',
+                style: TextStyle(fontSize: 11, color: LuxevaTheme.textMuted),
+                textAlign: TextAlign.center,
               ),
             ),
           ],

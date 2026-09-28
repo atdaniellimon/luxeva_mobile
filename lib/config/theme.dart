@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 
 class LuxevaTheme {
@@ -29,8 +30,43 @@ class LuxevaTheme {
 
   // Layout & Material Metrics
   static const double liquidBlur = 24.0;
+  static const double radiusCompact = 12.0;
+  static const double radiusStandard = 16.0;
+  static const double radiusCard = 20.0;
   static const double continuousRadius = 24.0;
   static const double hairline = 0.5;
+
+  /// Tabular numbers helper for financial balance and counters
+  static TextStyle tabularFigures({
+    double fontSize = 16,
+    FontWeight fontWeight = FontWeight.w600,
+    Color color = textPrimary,
+    double letterSpacing = -0.2,
+    String? fontFamily,
+  }) {
+    return TextStyle(
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      color: color,
+      letterSpacing: letterSpacing,
+      fontFamily: fontFamily,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+  }
+
+  /// Laser-etched card typography (Apple Card Titanium spec)
+  static TextStyle cardLaserNumber({
+    double fontSize = 16,
+    Color color = textPrimary,
+  }) {
+    return TextStyle(
+      fontSize: fontSize,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 2.8,
+      color: color,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+  }
 
   static CupertinoThemeData get cupertinoTheme {
     return const CupertinoThemeData(
